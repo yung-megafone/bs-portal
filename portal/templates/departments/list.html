@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Departments — B.S. Portal{% endblock %}
+{% block content %}
+<h1>Departments</h1>
+<p class="lede">Organizational units registered with the portal.</p>
+<div class="stack">
+{% for department in departments %}
+<section class="card">
+    <h2>{{ department.code }} — {{ department.name }}</h2>
+    {% if department.description %}<p>{{ department.description }}</p>{% endif %}
+    <p><strong>Status:</strong> {% if department.is_active %}Active{% else %}Inactive{% endif %}</p>
+</section>
+{% empty %}
+<section class="card"><p>No departments have been created yet. Use Django Admin to create the first one.</p></section>
+{% endfor %}
+</div>
+{% endblock %}

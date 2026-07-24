@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — B.S. Portal{% endblock %}
+{% block content %}
+<section class="hero">
+    <p class="eyebrow">INTERNAL OPERATIONS</p>
+    <h1>B.S. Portal</h1>
+    <p>Authenticated foundation is online. Operational modules will be added after the platform baseline is verified.</p>
+</section>
+
+<div class="grid">
+    <section class="card">
+        <h2>Identity</h2>
+        <p>Signed in as <strong>{{ user }}</strong>.</p>
+    </section>
+    <section class="card">
+        <h2>Departments</h2>
+        {% if memberships %}
+        <ul>
+            {% for membership in memberships %}
+            <li>{{ membership.department.code }} — {{ membership.get_role_display }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No active department membership is currently assigned.</p>
+        {% endif %}
+    </section>
+    <section class="card muted">
+        <h2>BAM</h2><p>Planned milestone.</p>
+    </section>
+    <section class="card muted">
+        <h2>SHIT</h2><p>Planned milestone.</p>
+    </section>
+    <section class="card muted">
+        <h2>NSEC</h2><p>Planned milestone.</p>
+    </section>
+    <section class="card muted">
+        <h2>PSOP</h2><p>Planned milestone.</p>
+    </section>
+</div>
+{% endblock %}
