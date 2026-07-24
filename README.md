@@ -2,13 +2,13 @@
 
 Internal B.S. Supply Co. operations platform.
 
-This repository is the **alpha foundation** for the B.S. Portal modular monolith. It intentionally starts small: identity, departments, authentication, health checks, architecture documentation, and environment separation. Operational modules such as BAM, SHIT, NSEC, intake, audit enforcement, and PSOP synchronization are staged for later milestones.
+This repository is the **alpha foundation** for the B.S. Portal modular monolith. This revision standardizes the project on MySQL/InnoDB to match the GoDaddy cPanel deployment environment. It intentionally starts small: identity, departments, authentication, health checks, architecture documentation, and environment separation. Operational modules such as BAM, SHIT, NSEC, intake, audit enforcement, and PSOP synchronization are staged for later milestones.
 
 ## Baseline
 
 - Python 3.11
 - Django 5.2 LTS series
-- PostgreSQL
+- MySQL/InnoDB
 - Django templates (no separate frontend build)
 - Linux deployment target
 - Windows 10 friendly local development
@@ -23,8 +23,8 @@ This repository is the **alpha foundation** for the B.S. Portal modular monolith
 
 ## Quick start — Windows PowerShell
 
-1. Install Python 3.11, PostgreSQL, and Git.
-2. Create a PostgreSQL database and user for local development.
+1. Install Python 3.11, MySQL/InnoDB, and Git.
+2. Create a MySQL/InnoDB database and user for local development.
 3. From the repository root:
 
 ```powershell
@@ -35,7 +35,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-4. Edit `.env` with your local PostgreSQL credentials.
+4. Edit `.env` with your local MySQL/InnoDB credentials.
 5. Run:
 
 ```powershell
@@ -81,7 +81,7 @@ Implemented:
 - Django authentication
 - base dashboard
 - health endpoint
-- PostgreSQL configuration
+- MySQL/InnoDB configuration
 - local/staging/production settings separation
 - cPanel Passenger entry point
 - foundational tests
@@ -103,7 +103,7 @@ Those are deliberately deferred so the platform foundation can be tested first.
 
 ## Architectural rule
 
-> Views request operations. Services perform operations. PostgreSQL enforces invariants. Audit records explain what happened.
+> Views request operations. Services perform operations. The database enforces invariants where supported; services enforce higher-order workflow rules. Audit records explain what happened.
 
 ## Security status
 

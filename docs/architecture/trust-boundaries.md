@@ -13,7 +13,7 @@ Internet
   → web-server authentication
   → Django session authentication
   → application authorization
-  → PostgreSQL
+  → MySQL/InnoDB
 ```
 
 ## Production

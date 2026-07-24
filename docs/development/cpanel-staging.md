@@ -1,8 +1,8 @@
 # cPanel Staging Deployment
 
-Target: `dev.bssply.co`
+Target: `dev.bssply.co` on GoDaddy cPanel
 
-This is a deployment guide, not a promise that every hosting provider exposes identical cPanel fields.
+This guide is tailored to the currently observed GoDaddy cPanel environment. Exact field labels may still vary.
 
 ## 1. Create the subdomain
 
@@ -45,11 +45,11 @@ DJANGO_SETTINGS_MODULE=config.settings.staging
 DJANGO_SECRET_KEY=<strong random value>
 DJANGO_ALLOWED_HOSTS=dev.bssply.co
 DJANGO_CSRF_TRUSTED_ORIGINS=https://dev.bssply.co
-POSTGRES_DB=<staging database>
-POSTGRES_USER=<staging user>
-POSTGRES_PASSWORD=<staging password>
-POSTGRES_HOST=<host supplied by provider>
-POSTGRES_PORT=5432
+MYSQL_DATABASE=<staging database>
+MYSQL_USER=<staging user>
+MYSQL_PASSWORD=<staging password>
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
 ```
 
 Never store these values in Git.

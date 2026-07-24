@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "Created .env from .env.example. Edit PostgreSQL credentials before running migrations."
+  echo "Created .env from .env.example. Edit MySQL credentials before running migrations."
 fi
 
 echo "B.S. Portal development environment prepared."

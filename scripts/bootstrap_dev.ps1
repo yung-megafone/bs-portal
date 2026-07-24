@@ -10,7 +10,7 @@ pip install -r requirements.txt
 
 if (-not (Test-Path ".env")) {
     Copy-Item .env.example .env
-    Write-Host "Created .env from .env.example. Edit PostgreSQL credentials before running migrations."
+    Write-Host "Created .env from .env.example. Edit MySQL credentials before running migrations."
 }
 
 Write-Host "B.S. Portal development environment prepared."
