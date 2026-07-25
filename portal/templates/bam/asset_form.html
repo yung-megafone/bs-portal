@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Register Asset — BAM{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">BAM · ASSET INTAKE</p>
+    <h1>Register Asset</h1>
+    <p>The identifier is generated only when the record is committed. MySQL enforces uniqueness; a random collision is retried automatically.</p>
+</section>
+<section class="card form-card">
+    <form method="post" enctype="multipart/form-data" class="form-grid">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+            <div class="field {% if field.name == 'notes' %}span-2{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}
+            </div>
+        {% endfor %}
+        <div class="span-2 action-row">
+            <button type="submit">Commit to BAM</button>
+            <a href="{% url 'bam:list' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

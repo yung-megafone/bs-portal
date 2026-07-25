@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}BAM — B.S. Portal{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">B.S. ASSET MANAGEMENT</p>
+    <div class="hero-row">
+        <div>
+            <h1>BAM</h1>
+            <p>Authoritative operational asset register.</p>
+        </div>
+        <a class="button" href="{% url 'bam:create' %}">Register asset</a>
+    </div>
+</section>
+
+<div class="metric-grid">
+    <section class="metric"><span>{{ total_count }}</span><small>Total assets</small></section>
+    <section class="metric"><span>{{ types_count }}</span><small>Active types</small></section>
+</div>
+
+<section class="card">
+    <form method="get" class="search-row">
+        <input type="search" name="q" value="{{ query }}" placeholder="Asset ID, serial, manufacturer, model, notes…">
+        <button type="submit">Search</button>
+        {% if query %}<a href="{% url 'bam:list' %}">Clear</a>{% endif %}
+    </form>
+</section>
+
+<section class="card table-card">
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Asset ID</th><th>Type</th><th>Department</th><th>Manufacturer / Model</th><th>Status</th><th>Custodian</th></tr></thead>
+            <tbody>
+            {% for asset in assets %}
+                <tr>
+                    <td><a class="mono" href="{% url 'bam:detail' asset.asset_id %}">{{ asset.asset_id }}</a></td>
+                    <td>{{ asset.asset_type.name }}</td>
+                    <td>{{ asset.department.code }}</td>
+                    <td>{{ asset.manufacturer }}{% if asset.manufacturer and asset.model %} / {% endif %}{{ asset.model }}</td>
+                    <td><span class="pill">{{ asset.status.name }}</span></td>
+                    <td>{{ asset.current_custodian|default:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6">No assets found. Register the first one.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

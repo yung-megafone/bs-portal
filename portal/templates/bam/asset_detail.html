@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ asset.asset_id }} — BAM{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">BAM · ASSET RECORD</p>
+    <h1 class="asset-title">{{ asset.asset_id }}</h1>
+    <p>{{ asset.manufacturer }} {{ asset.model }}</p>
+</section>
+
+<div class="grid detail-grid">
+    <section class="card">
+        <div class="section-heading"><h2>Asset</h2><a href="{% url 'bam:edit' asset.asset_id %}">Edit details</a></div>
+        <dl class="record-grid">
+            <dt>Type</dt><dd>{{ asset.asset_type }}</dd>
+            <dt>Department</dt><dd>{{ asset.department }}</dd>
+            <dt>Ownership</dt><dd>{{ asset.get_ownership_display }}</dd>
+            <dt>Status</dt><dd>{{ asset.status }}</dd>
+            <dt>Manufacturer</dt><dd>{{ asset.manufacturer|default:"—" }}</dd>
+            <dt>Model</dt><dd>{{ asset.model|default:"—" }}</dd>
+            <dt>Serial</dt><dd class="mono">{{ asset.serial_number|default:"—" }}</dd>
+            <dt>Custodian</dt><dd>{{ asset.current_custodian|default:"—" }}</dd>
+            <dt>Acquired</dt><dd>{{ asset.acquired_at|default:"—" }}</dd>
+            <dt>Retired</dt><dd>{{ asset.retired_at|default:"—" }}</dd>
+            <dt>Registered</dt><dd>{{ asset.created_at }}</dd>
+            <dt>Registered by</dt><dd>{{ asset.created_by }}</dd>
+        </dl>
+        {% if asset.notes %}<h3>Notes</h3><p class="prewrap">{{ asset.notes }}</p>{% endif %}
+    </section>
+
+    <section class="card">
+        <h2>Change Status</h2>
+        <form method="post" action="{% url 'bam:status' asset.asset_id %}" class="stack-form">
+            {% csrf_token %}
+            {{ status_form.as_p }}
+            <button type="submit">Update status</button>
+        </form>
+    </section>
+    <section class="card">
+        <h2>Assign Custody</h2>
+        <form method="post" action="{% url 'bam:custody' asset.asset_id %}" class="stack-form">
+            {% csrf_token %}
+            {{ custody_form.as_p }}
+            <button type="submit">Assign custody</button>
+        </form>
+    </section>
+</div>
+
+<section class="card">
+    <h2>Evidence</h2>
+    <form method="post" enctype="multipart/form-data" action="{% url 'bam:evidence_add' asset.asset_id %}" class="inline-fields">
+        {% csrf_token %}
+        {{ evidence_form.as_p }}
+        <button type="submit">Attach evidence</button>
+    </form>
+    <div class="evidence-grid">
+    {% for item in evidence %}
+        <article class="evidence-card">
+            <strong>{{ item.get_kind_display }}</strong>
+            <a href="{{ item.file.url }}" target="_blank" rel="noopener">{{ item.original_filename }}</a>
+            <small>{{ item.size_bytes }} bytes · SHA-256 <span class="mono hash">{{ item.sha256 }}</span></small>
+            <small>Uploaded {{ item.uploaded_at }} by {{ item.uploaded_by }}</small>
+        </article>
+    {% empty %}<p>No evidence attached.</p>{% endfor %}
+    </div>
+</section>
+
+<section class="card">
+    <h2>Custody History</h2>
+    <div class="table-wrap"><table><thead><tr><th>Custodian</th><th>Assigned</th><th>Returned</th><th>By</th><th>Reason</th></tr></thead><tbody>
+    {% for row in custody %}<tr><td>{{ row.custodian }}</td><td>{{ row.assigned_at }}</td><td>{{ row.returned_at|default:"Current" }}</td><td>{{ row.assigned_by }}</td><td>{{ row.reason }}</td></tr>
+    {% empty %}<tr><td colspan="5">No custody records.</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+
+<section class="card">
+    <h2>Asset History</h2>
+    <div class="timeline">
+    {% for event in events %}
+        <article><time>{{ event.occurred_at }}</time><strong>{{ event.get_event_type_display }}</strong><span>{{ event.summary }}</span><small>{{ event.actor }}</small></article>
+    {% empty %}<p>No events.</p>{% endfor %}
+    </div>
+</section>
+{% endblock %}

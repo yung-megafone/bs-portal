@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Register Asset — B.S. Portal{% endblock %}
+{% block content %}
+<section class="page-header">
+  <p class="eyebrow">BAM · ASSET INTAKE</p>
+  <h1>Register Asset</h1>
+  <p>Create an authoritative B.S. asset record.</p>
+</section>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="notice notice-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<form method="post" class="panel form-grid">
+  {% csrf_token %}
+
+  {% for field in form %}
+    <div class="form-field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}
+        <p class="help">{{ field.help_text }}</p>
+      {% endif %}
+      {% for error in field.errors %}
+        <p class="field-error">{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endfor %}
+
+  <div class="form-actions">
+    <button type="submit">Register asset</button>
+  </div>
+</form>
+
+<section class="panel">
+  <h2>Identifier behavior</h2>
+  <p>
+    BAM will attempt to honor an optional preferred four-hex suffix. If the
+    preference is already assigned, BAM will automatically allocate a random
+    unused suffix instead. Database uniqueness remains authoritative.
+  </p>
+</section>
+{% endblock %}

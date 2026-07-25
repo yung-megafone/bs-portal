@@ -56,8 +56,7 @@ class DepartmentMembership(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "department"],
-                condition=Q(is_active=True),
-                name="one_active_membership_per_user_department",
+                name="unique_membership_per_user_department",
             ),
             models.CheckConstraint(
                 condition=Q(ended_at__isnull=True) | Q(started_at__isnull=True) | Q(ended_at__gte=models.F("started_at")),

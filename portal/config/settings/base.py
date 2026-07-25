@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.identity",
     "apps.departments",
+    "apps.bam",
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,9 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = REPO_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path(env("BAM_MEDIA_ROOT", str(REPO_DIR / "data" / "asset_media")))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "identity.User"
