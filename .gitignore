@@ -34,3 +34,15 @@ dist/
 
 # Data Files
 data/
+
+# Local databases
+*.sqlite3
+*.sqlite3-journal
+
+# Python tooling / type checking
+.mypy_cache/
+.ruff_cache/
+
+# Temporary files
+*.tmp
+*.bak
