@@ -79,3 +79,22 @@ tr:last-child td { border-bottom:0; }
 .module-live { border-color:#7d4d27; }
 @media (max-width:760px) { .form-grid,.detail-grid,.inline-fields { grid-template-columns:1fr; } .span-2 { grid-column:auto; } .hero-row { align-items:flex-start; flex-direction:column; } .search-row { grid-template-columns:1fr; } .timeline article { grid-template-columns:1fr; } }
 .section-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+
+/* SHIT alpha */
+.ticket-tabs { display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+.ticket-tabs a { padding:.55rem .8rem; border:1px solid #2a2f36; border-radius:.35rem; background:#111419; }
+.ticket-tabs a.active { border-color:#f08b37; color:#fff; }
+.ticket-title { font-family:"Cascadia Code",Consolas,monospace; font-size:clamp(2rem,6vw,4rem)!important; margin-bottom:.5rem!important; }
+.ticket-badges { display:flex; gap:.5rem; flex-wrap:wrap; }
+.sev { display:inline-block; border-radius:99px; padding:.2rem .6rem; font-size:.8rem; font-weight:800; border:1px solid currentColor; }
+.sev-none { color:#8b949e; background:#1a1f24; }
+.sev-sev5 { color:#58a6ff; background:#10253d; }
+.sev-sev4 { color:#3fb950; background:#102a18; }
+.sev-sev3 { color:#d29922; background:#2d240d; }
+.sev-sev2 { color:#f0883e; background:#321b0f; }
+.sev-sev1 { color:#ff7b72; background:#351416; }
+.ticket-thread { display:grid; gap:.75rem; margin-bottom:1rem; }
+.comment { padding:1rem; background:#0d1014; border:1px solid #272c33; border-radius:.45rem; }
+.comment header { display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; color:#aeb6c2; }
+.comment header span { font-size:.8rem; }
+.internal-note { border-color:#7d4d27; background:#1c1510; }

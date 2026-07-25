@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.identity",
     "apps.departments",
     "apps.bam",
+    "apps.shit",
 ]
 
 MIDDLEWARE = [

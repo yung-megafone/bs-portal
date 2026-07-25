@@ -20,7 +20,7 @@
         <p><strong>{{ bam_summary.total }}</strong> assets · {{ bam_summary.in_custody }} assigned to custodians.</p>
         <p><a href="{% url 'bam:create' %}">Register asset →</a></p>
     </section>
-    <section class="card muted"><h2>SHIT</h2><p>Planned milestone.</p></section>
+    <section class="card module-live"><p class="eyebrow">LIVE MODULE</p><h2><a href="{% url 'shit:list' %}">SHIT</a></h2><p><strong>{{ shit_summary.open }}</strong> open tickets · {{ shit_summary.mine }} involving you.</p><p><a href="{% url 'shit:create' %}">Submit ticket →</a></p></section>
     <section class="card muted"><h2>NSEC</h2><p>Planned milestone.</p></section>
     <section class="card muted"><h2>PSOP</h2><p>Planned milestone.</p></section>
 </div>
