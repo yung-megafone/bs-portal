@@ -25,3 +25,12 @@ class DashboardTests(TestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "B.S. Portal")
+
+    def test_base_template_exposes_bs_theme_selector(self):
+        self.client.login(username="tester", password="test-password-123")
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertContains(response, 'id="portal-theme"')
+        self.assertContains(response, 'value="bs-blue"')
+        self.assertContains(response, 'value="bs-red"')
+        self.assertContains(response, "js/theme.js")
