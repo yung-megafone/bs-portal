@@ -13,7 +13,10 @@ class HealthViewTests(TestCase):
 
 class DashboardTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="tester", password="test-password-123")
+        self.user = User.objects.create_user(
+            username="tester",
+            password="test-password-123",
+        )
 
     def test_dashboard_requires_login(self):
         response = self.client.get(reverse("dashboard"))
@@ -26,11 +29,23 @@ class DashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "B.S. Portal")
 
-    def test_base_template_exposes_bs_theme_selector(self):
+    def test_base_template_exposes_account_theme_controls(self):
         self.client.login(username="tester", password="test-password-123")
         response = self.client.get(reverse("dashboard"))
 
-        self.assertContains(response, 'id="portal-theme"')
-        self.assertContains(response, 'value="bs-blue"')
-        self.assertContains(response, 'value="bs-red"')
+        self.assertContains(response, 'id="account-menu"')
+        self.assertContains(response, 'data-theme-option="bs-blue"')
+        self.assertContains(response, 'data-theme-option="bs-red"')
         self.assertContains(response, "js/theme.js")
+        self.assertNotContains(response, 'id="portal-theme"')
+
+    def test_staff_account_gets_admin_treatment_and_link(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=["is_staff"])
+
+        self.client.login(username="tester", password="test-password-123")
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertContains(response, "is-admin")
+        self.assertContains(response, 'href="/admin/"')
+        self.assertContains(response, "Administrator")

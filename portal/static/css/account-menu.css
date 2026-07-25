@@ -1,0 +1,207 @@
+
+/* SHIT-26-B2D376 — account pop-out menu hotfix */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1.15rem;
+    position: relative;
+}
+
+.primary-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.account-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.account-menu > summary {
+    list-style: none;
+}
+
+.account-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.account-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: .42rem;
+    padding: .38rem .18rem;
+    color: var(--bs-text);
+    cursor: pointer;
+    user-select: none;
+    font-weight: 650;
+    border: 0;
+    background: transparent;
+    border-radius: 999px;
+}
+
+.account-trigger:hover,
+.account-menu[open] > .account-trigger {
+    color: var(--bs-text-strong);
+    background: var(--bs-surface-raised);
+}
+
+/* Elevated-role treatment: filled rather than outlined. */
+.account-trigger.is-admin {
+    padding: .38rem .72rem;
+    color: #151006;
+    background: #d8ad4c;
+    border: 1px solid #edcb78;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
+}
+
+.account-trigger.is-admin:hover,
+.account-menu[open] > .account-trigger.is-admin {
+    color: #0d0903;
+    background: #e5bd60;
+}
+
+.account-chevron {
+    font-size: .7rem;
+    opacity: .78;
+    transition: transform .12s ease;
+}
+
+.account-menu[open] .account-chevron {
+    transform: rotate(180deg);
+}
+
+.account-panel {
+    position: absolute !important;
+    z-index: 1000;
+    top: calc(100% + .55rem);
+    right: 0;
+    width: 250px;
+    max-width: calc(100vw - 2rem);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+
+    background: var(--bs-surface-raised);
+    border: 1px solid var(--bs-border-strong);
+    border-radius: .62rem;
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, .48),
+        0 4px 14px rgba(0, 0, 0, .28);
+}
+
+.account-identity {
+    display: grid;
+    gap: .16rem;
+    padding: .9rem 1rem .8rem;
+}
+
+.account-identity strong {
+    color: var(--bs-text-strong);
+    font-size: .9rem;
+}
+
+.account-identity span {
+    color: var(--bs-text-muted);
+    font-size: .74rem;
+}
+
+.account-section {
+    display: grid;
+    gap: .16rem;
+    padding: .62rem;
+    border-top: 1px solid var(--bs-border-soft);
+}
+
+.account-section-label {
+    display: block;
+    padding: .12rem .42rem .42rem;
+    color: var(--bs-text-faint);
+    font-size: .67rem;
+    font-weight: 800;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.account-panel .theme-menu-option,
+.account-panel .account-action {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .62rem;
+    margin: 0;
+    padding: .58rem .66rem;
+
+    border: 0 !important;
+    border-radius: .38rem;
+    background: transparent !important;
+    color: var(--bs-text);
+    box-shadow: none !important;
+
+    font: inherit;
+    font-size: .84rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.account-panel .theme-menu-option:hover,
+.account-panel .account-action:hover,
+.account-panel .account-links a:hover {
+    background: var(--bs-primary-soft) !important;
+    color: var(--bs-text-strong);
+    text-decoration: none;
+}
+
+.theme-option-indicator {
+    width: 1rem;
+    flex: 0 0 1rem;
+    color: transparent;
+    font-weight: 900;
+}
+
+.theme-menu-option.is-selected .theme-option-indicator {
+    color: var(--bs-primary);
+}
+
+.account-links a {
+    display: block;
+    padding: .58rem .66rem;
+    border-radius: .38rem;
+    color: var(--bs-text);
+    font-size: .84rem;
+    font-weight: 600;
+}
+
+.account-links form {
+    margin: 0;
+}
+
+/* Avoid the dropdown affecting header height/layout. */
+.account-panel,
+.account-panel * {
+    box-sizing: border-box;
+}
+
+@media (max-width: 760px) {
+    .header-actions {
+        gap: .7rem;
+    }
+
+    .primary-nav {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: .65rem;
+    }
+
+    .account-panel {
+        position: fixed !important;
+        top: 4.25rem;
+        right: 1rem;
+        width: min(250px, calc(100vw - 2rem));
+    }
+}
