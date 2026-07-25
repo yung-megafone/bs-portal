@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.departments",
     "apps.bam",
     "apps.shit",
+    "apps.timeclock",
 ]
 
 MIDDLEWARE = [

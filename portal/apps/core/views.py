@@ -12,6 +12,7 @@ def health(request):
 def dashboard(request):
     from apps.bam.models import Asset
     from apps.shit.models import Ticket
+    from apps.timeclock.services import get_clock_state
 
     memberships = request.user.department_memberships.select_related("department")
     bam_summary = {
@@ -19,7 +20,22 @@ def dashboard(request):
         "in_custody": Asset.objects.filter(current_custodian__isnull=False).count(),
     }
     shit_summary = {
-        "open": Ticket.objects.exclude(status__in=[Ticket.Status.CLOSED, Ticket.Status.CANCELLED]).count(),
-        "mine": Ticket.objects.filter(Q(requester=request.user) | Q(assigned_user=request.user)).distinct().count(),
+        "open": Ticket.objects.exclude(
+            status__in=[Ticket.Status.CLOSED, Ticket.Status.CANCELLED]
+        ).count(),
+        "mine": Ticket.objects.filter(
+            Q(requester=request.user) | Q(assigned_user=request.user)
+        ).distinct().count(),
     }
-    return render(request, "core/dashboard.html", {"memberships": memberships, "bam_summary": bam_summary, "shit_summary": shit_summary})
+    timeclock_summary = get_clock_state(request.user)
+
+    return render(
+        request,
+        "core/dashboard.html",
+        {
+            "memberships": memberships,
+            "bam_summary": bam_summary,
+            "shit_summary": shit_summary,
+            "timeclock_summary": timeclock_summary,
+        },
+    )

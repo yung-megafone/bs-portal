@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Timeclock — B.S. Portal{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">WORK TIME</p>
+    <h1>Timeclock</h1>
+    <p class="lede">Authenticated work-time record. No location, biometric, device fingerprint, or surveillance data is collected by this module.</p>
+</section>
+
+{% if messages %}
+<div class="stack">
+    {% for message in messages %}
+    <div class="card timeclock-message">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="timeclock-layout">
+    <section class="card timeclock-status-card">
+        <p class="eyebrow">CURRENT STATE</p>
+        {% if clock_state.is_clocked_in %}
+            <h2 class="clock-state clock-state-in">Clocked in</h2>
+            <p>
+                Since
+                <strong>{{ clock_state.last_punch.effective_occurred_at|date:"Y-m-d H:i:s" }}</strong>
+            </p>
+            <form method="post" action="{% url 'timeclock:punch' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="out">
+                <button type="submit" class="timeclock-punch-button">Clock out</button>
+            </form>
+        {% else %}
+            <h2 class="clock-state">Clocked out</h2>
+            {% if clock_state.last_punch %}
+            <p>
+                Last punch:
+                <strong>{{ clock_state.last_punch.effective_occurred_at|date:"Y-m-d H:i:s" }}</strong>
+            </p>
+            {% else %}
+            <p>No punch history yet.</p>
+            {% endif %}
+            <form method="post" action="{% url 'timeclock:punch' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="in">
+                <button type="submit" class="timeclock-punch-button">Clock in</button>
+            </form>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <p class="eyebrow">RECORD</p>
+        <h2>Recent punches</h2>
+
+        {% if punches %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Effective time</th>
+                        <th>Type</th>
+                        <th>Source</th>
+                        <th>Record state</th>
+                        {% if user.is_staff %}<th>Admin</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for punch in punches %}
+                    <tr>
+                        <td class="mono">{{ punch.effective_occurred_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            <span class="pill">{{ punch.effective_punch_type }}</span>
+                        </td>
+                        <td>{{ punch.get_source_display }}</td>
+                        <td>
+                            {% if punch.is_corrected %}
+                                <span class="pill corrected-pill">Corrected</span>
+                                <details class="punch-audit-detail">
+                                    <summary>Audit detail</summary>
+                                    <div>
+                                        <strong>Original:</strong>
+                                        {{ punch.occurred_at|date:"Y-m-d H:i:s" }} {{ punch.punch_type }}
+                                    </div>
+                                    {% for correction in punch.corrections.all %}
+                                    <div class="correction-entry">
+                                        <strong>Correction {{ forloop.counter }}:</strong>
+                                        {{ correction.corrected_occurred_at|date:"Y-m-d H:i:s" }}
+                                        {{ correction.corrected_punch_type }}
+                                        · {{ correction.corrected_by }}
+                                        · {{ correction.created_at|date:"Y-m-d H:i:s" }}
+                                        <br>
+                                        <span class="muted">{{ correction.reason }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </details>
+                            {% else %}
+                                Original
+                            {% endif %}
+                        </td>
+                        {% if user.is_staff %}
+                        <td>
+                            <a href="{% url 'timeclock:correct' punch.id %}">Correct →</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="lede">No punches recorded.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

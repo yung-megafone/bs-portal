@@ -1,0 +1,67 @@
+/* SHIT-26-1740F0 — Timeclock module */
+
+.timeclock-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, .8fr) minmax(0, 2.2fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.timeclock-status-card {
+    position: sticky;
+    top: 1rem;
+}
+
+.clock-state {
+    margin-bottom: .35rem;
+}
+
+.clock-state-in {
+    color: var(--semantic-success);
+}
+
+.timeclock-punch-button {
+    width: 100%;
+    margin-top: .75rem;
+    padding: 1rem;
+    font-size: 1rem;
+}
+
+.timeclock-message {
+    margin-bottom: 1rem;
+}
+
+.corrected-pill {
+    color: var(--semantic-warning);
+    border-color: var(--semantic-warning);
+}
+
+.punch-audit-detail {
+    margin-top: .45rem;
+    color: var(--bs-text-muted);
+    font-size: .8rem;
+}
+
+.punch-audit-detail summary {
+    cursor: pointer;
+    color: var(--bs-primary);
+}
+
+.punch-audit-detail > div {
+    margin-top: .45rem;
+}
+
+.correction-entry {
+    padding-top: .45rem;
+    border-top: 1px solid var(--bs-border-soft);
+}
+
+@media (max-width: 800px) {
+    .timeclock-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .timeclock-status-card {
+        position: static;
+    }
+}

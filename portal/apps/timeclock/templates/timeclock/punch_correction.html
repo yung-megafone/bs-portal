@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Correct Punch — B.S. Portal{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">ADMINISTRATIVE CORRECTION</p>
+    <h1>Correct punch</h1>
+    <p class="lede">The original punch is preserved. This action appends a correction and audit event.</p>
+</section>
+
+<div class="detail-grid grid">
+    <section class="card">
+        <h2>Original record</h2>
+        <dl class="record-grid">
+            <dt>Employee</dt><dd>{{ punch.employee }}</dd>
+            <dt>Original type</dt><dd>{{ punch.punch_type }}</dd>
+            <dt>Original time</dt><dd>{{ punch.occurred_at|date:"Y-m-d H:i:s" }}</dd>
+            <dt>Recorded by</dt><dd>{{ punch.recorded_by }}</dd>
+            <dt>Source</dt><dd>{{ punch.get_source_display }}</dd>
+            <dt>Created</dt><dd>{{ punch.created_at|date:"Y-m-d H:i:s" }}</dd>
+        </dl>
+    </section>
+
+    <section class="card">
+        <h2>Correction</h2>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Record correction</button>
+        </form>
+    </section>
+</div>
+{% endblock %}

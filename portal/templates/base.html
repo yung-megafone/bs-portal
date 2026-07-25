@@ -24,6 +24,7 @@
 
     <link rel="stylesheet" href="{% static 'css/portal.css' %}">
     <link rel="stylesheet" href="{% static 'css/account-menu.css' %}">
+    <link rel="stylesheet" href="{% static 'css/timeclock.css' %}">
     <script src="{% static 'js/theme.js' %}" defer></script>
 </head>
 <body>
@@ -40,6 +41,7 @@
             <a href="{% url 'departments:list' %}">Departments</a>
             <a href="{% url 'bam:list' %}">BAM</a>
             <a href="{% url 'shit:list' %}">SHIT</a>
+            <a href="{% url 'timeclock:home' %}">Timeclock</a>
         </nav>
 
         <details class="account-menu" id="account-menu">

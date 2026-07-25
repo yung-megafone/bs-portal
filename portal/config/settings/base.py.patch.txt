@@ -1,0 +1,3 @@
+Add the following line to INSTALLED_APPS immediately after "apps.shit":
+
+    "apps.timeclock",

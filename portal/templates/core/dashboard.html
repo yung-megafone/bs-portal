@@ -20,7 +20,23 @@
         <p><strong>{{ bam_summary.total }}</strong> assets · {{ bam_summary.in_custody }} assigned to custodians.</p>
         <p><a href="{% url 'bam:create' %}">Register asset →</a></p>
     </section>
-    <section class="card module-live"><p class="eyebrow">LIVE MODULE</p><h2><a href="{% url 'shit:list' %}">SHIT</a></h2><p><strong>{{ shit_summary.open }}</strong> open tickets · {{ shit_summary.mine }} involving you.</p><p><a href="{% url 'shit:create' %}">Submit ticket →</a></p></section>
+    <section class="card module-live">
+        <p class="eyebrow">LIVE MODULE</p>
+        <h2><a href="{% url 'shit:list' %}">SHIT</a></h2>
+        <p><strong>{{ shit_summary.open }}</strong> open tickets · {{ shit_summary.mine }} involving you.</p>
+        <p><a href="{% url 'shit:create' %}">Submit ticket →</a></p>
+    </section>
+    <section class="card module-live">
+        <p class="eyebrow">LIVE MODULE</p>
+        <h2><a href="{% url 'timeclock:home' %}">Timeclock</a></h2>
+        {% if timeclock_summary.is_clocked_in %}
+            <p><strong>Clocked in</strong> since {{ timeclock_summary.last_punch.effective_occurred_at|date:"H:i:s" }}.</p>
+            <p><a href="{% url 'timeclock:home' %}">Open timeclock →</a></p>
+        {% else %}
+            <p><strong>Clocked out.</strong></p>
+            <p><a href="{% url 'timeclock:home' %}">Clock in →</a></p>
+        {% endif %}
+    </section>
     <section class="card muted"><h2>NSEC</h2><p>Planned milestone.</p></section>
     <section class="card muted"><h2>PSOP</h2><p>Planned milestone.</p></section>
 </div>
