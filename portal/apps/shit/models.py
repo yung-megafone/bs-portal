@@ -39,7 +39,6 @@ class Ticket(models.Model):
     # Human-readable immutable identifier. The database UNIQUE constraint is
     # authoritative for collision prevention.
     ticket_number = models.CharField(max_length=32, unique=True, editable=False)
-
     title = models.CharField(max_length=200)
     description = models.TextField()
     ticket_type = models.CharField(
@@ -57,6 +56,10 @@ class Ticket(models.Model):
         choices=Status.choices,
         default=Status.NEW,
     )
+    # Operational queue order for the board. Severity is deliberately separate.
+    # New tickets default to zero so they naturally appear before manually ranked
+    # tickets until an agent explicitly reorders the column.
+    queue_position = models.PositiveIntegerField(default=0)
     requester = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -100,6 +103,10 @@ class Ticket(models.Model):
             models.Index(fields=["assigned_user", "status"]),
             models.Index(fields=["requester", "status"]),
             models.Index(fields=["severity", "status"]),
+            models.Index(
+                fields=["status", "queue_position"],
+                name="shit_tkt_status_queue_idx",
+            ),
         ]
 
     def __str__(self):
@@ -169,6 +176,7 @@ class TicketEvent(models.Model):
         ASSIGNEE_CHANGED = "ASSIGNEE_CHANGED", "Assignee changed"
         ASSET_LINKED = "ASSET_LINKED", "Asset linked"
         DOCUMENT_LINKED = "DOCUMENT_LINKED", "Document linked"
+        QUEUE_REORDERED = "QUEUE_REORDERED", "Queue reordered"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket = models.ForeignKey(
