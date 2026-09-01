@@ -1,9 +1,268 @@
-{% extends "base.html" %}{% block title %}{{ ticket.ticket_number }} — SHIT{% endblock %}{% block content %}
-<section class="hero compact-hero"><p class="eyebrow">SHIT TICKET</p><h1 class="ticket-title">{{ ticket.ticket_number }}</h1><h2>{{ ticket.title }}</h2><div class="ticket-badges"><span class="sev sev-{{ ticket.severity|lower }}">{{ ticket.get_severity_display }}</span><span class="pill">{{ ticket.get_status_display }}</span>{% if ticket.assigned_department %}<span class="pill">{{ ticket.assigned_department.code }}</span>{% endif %}</div></section>
-<div class="grid detail-grid"><div class="stack"><section class="card"><h2>Description</h2><div class="prewrap">{{ ticket.description }}</div></section>
-<section class="card"><div class="section-heading"><h2>Conversation</h2><span class="muted">{{ comments|length }} entries</span></div><div class="ticket-thread">{% for comment in comments %}<article class="comment {% if comment.visibility == 'INTERNAL' %}internal-note{% endif %}"><header><strong>{{ comment.author }}</strong><span>{{ comment.created_at|date:"Y-m-d H:i" }}</span>{% if comment.visibility == 'INTERNAL' %}<span class="pill">Internal</span>{% endif %}</header><div class="prewrap">{{ comment.body }}</div></article>{% empty %}<p class="muted">No comments yet.</p>{% endfor %}</div><form method="post" action="{% url 'shit:comment' ticket.ticket_number %}" class="stack-form">{% csrf_token %}{{ comment_form.as_p }}<button>Add entry</button></form></section>
-<section class="card"><h2>Attachments</h2><div class="evidence-grid">{% for attachment in attachments %}<div class="evidence-card"><a href="{{ attachment.file.url }}">{{ attachment.original_filename }}</a><small>{{ attachment.uploaded_by }} · {{ attachment.created_at|date:"Y-m-d H:i" }} · {{ attachment.size_bytes }} bytes</small><small class="mono hash">SHA-256 {{ attachment.sha256 }}</small></div>{% empty %}<p class="muted">No attachments.</p>{% endfor %}</div><form method="post" enctype="multipart/form-data" action="{% url 'shit:attachment' ticket.ticket_number %}" class="stack-form">{% csrf_token %}{{ attachment_form.as_p }}<button>Add attachment</button></form></section>
-{% if can_manage %}<section class="card"><h2>Event history</h2><div class="timeline">{% for event in events %}<article><time>{{ event.occurred_at|date:"Y-m-d H:i:s" }}</time><strong>{{ event.get_event_type_display }}</strong><span>{{ event.summary }}</span><small>{{ event.actor }}</small></article>{% empty %}<p class="muted">No events.</p>{% endfor %}</div></section>{% endif %}</div>
-<aside class="stack"><section class="card"><h2>Record</h2><dl class="record-grid"><dt>Requester</dt><dd>{{ ticket.requester }}</dd><dt>Type</dt><dd>{{ ticket.get_ticket_type_display }}</dd><dt>Department</dt><dd>{{ ticket.assigned_department|default:"—" }}</dd><dt>Assignee</dt><dd>{{ ticket.assigned_user|default:"—" }}</dd><dt>Asset</dt><dd>{% if ticket.related_asset %}<a href="{% url 'bam:detail' ticket.related_asset.asset_id %}">{{ ticket.related_asset.asset_id }}</a>{% else %}—{% endif %}</dd><dt>PSOP</dt><dd>{{ ticket.related_document|default:"—" }}</dd><dt>Created</dt><dd>{{ ticket.created_at|date:"Y-m-d H:i" }}</dd><dt>Resolved</dt><dd>{{ ticket.resolved_at|date:"Y-m-d H:i"|default:"—" }}</dd><dt>Closed</dt><dd>{{ ticket.closed_at|date:"Y-m-d H:i"|default:"—" }}</dd></dl></section>
-{% if can_manage %}<section class="card"><h2>Manage ticket</h2><form method="post" action="{% url 'shit:manage' ticket.ticket_number %}" class="stack-form">{% csrf_token %}{{ manage_form.as_p }}<button>Update ticket</button></form></section>{% endif %}</aside></div>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ ticket.ticket_number }} — SHIT{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/shit.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="hero compact-hero shit-hero shit-ticket-hero" data-ticket-detail-header>
+    <div class="shit-detail-header-main">
+        <div class="shit-detail-identity">
+            <p class="eyebrow">SHIT TICKET</p>
+            <div class="shit-detail-titleline">
+                <h1 class="ticket-title mono">{{ ticket.ticket_number }}</h1>
+                <div class="ticket-badges">
+                    <span class="sev sev-{{ ticket.severity|lower }}">{{ ticket.get_severity_display }}</span>
+                    <span class="pill status-{{ ticket.status|lower }}">{{ ticket.get_status_display }}</span>
+                    {% if ticket.assigned_department %}<span class="pill">{{ ticket.assigned_department.code }}</span>{% endif %}
+                    {% if not ticket.assigned_user %}<span class="pill shit-unassigned">Unassigned</span>{% endif %}
+                </div>
+            </div>
+            <h2>{{ ticket.title }}</h2>
+        </div>
+        <div class="shit-detail-header-actions">
+            <div class="shit-density-toggle" role="group" aria-label="Ticket detail density">
+                <button type="button" class="shit-density-button" data-detail-density="dense" aria-pressed="false">Dense</button>
+                <button type="button" class="shit-density-button" data-detail-density="compact" aria-pressed="false">Compact</button>
+            </div>
+            <div class="shit-detail-nav">
+                <a href="{% url 'shit:list' %}?view=board">Board</a>
+                <a href="{% url 'shit:list' %}">List</a>
+            </div>
+        </div>
+    </div>
+    <dl class="shit-detail-facts" aria-label="Ticket summary">
+        <div><dt>Requester</dt><dd>{{ ticket.requester }}</dd></div>
+        <div><dt>Assignee</dt><dd>{{ ticket.assigned_user|default:"—" }}</dd></div>
+        <div><dt>Department</dt><dd>{{ ticket.assigned_department.code|default:"—" }}</dd></div>
+        <div><dt>Opened</dt><dd>{{ ticket.created_at|timesince }} ago</dd></div>
+        <div><dt>Queue</dt><dd>{{ ticket.queue_position }}</dd></div>
+        {% if ticket.related_asset %}<div><dt>Asset</dt><dd class="mono">{{ ticket.related_asset.asset_id }}</dd></div>{% endif %}
+    </dl>
+</section>
+
+<div class="shit-workbench-grid shit-detail-workbench" data-ticket-detail data-density="dense">
+    <main class="shit-workbench-main stack">
+        <section class="card shit-panel">
+            <div class="shit-panel-heading">
+                <div>
+                    <p class="eyebrow">REQUEST</p>
+                    <h2>Description</h2>
+                </div>
+                <span class="muted">Opened {{ ticket.created_at|timesince }} ago</span>
+            </div>
+            <div class="prewrap shit-description">{{ ticket.description }}</div>
+        </section>
+
+        <section class="card shit-panel">
+            <div class="shit-panel-heading">
+                <div>
+                    <p class="eyebrow">THREAD</p>
+                    <h2>Conversation</h2>
+                </div>
+                <span class="muted">{{ comments|length }} entr{{ comments|length|pluralize:"y,ies" }}</span>
+            </div>
+            <div class="ticket-thread shit-thread">
+                {% for comment in comments %}
+                <article class="comment {% if comment.visibility == 'INTERNAL' %}internal-note{% endif %}">
+                    <header>
+                        <strong>{{ comment.author }}</strong>
+                        <span>{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+                        {% if comment.visibility == 'INTERNAL' %}<span class="pill">Internal</span>{% endif %}
+                    </header>
+                    <div class="prewrap">{{ comment.body }}</div>
+                </article>
+                {% empty %}
+                <p class="muted">No comments yet.</p>
+                {% endfor %}
+            </div>
+            <form method="post" action="{% url 'shit:comment' ticket.ticket_number %}" class="stack-form shit-entry-form">
+                {% csrf_token %}
+                <div class="field shit-field">
+                    {{ comment_form.body.label_tag }}
+                    {{ comment_form.body }}
+                </div>
+                {% if can_manage %}
+                <div class="field shit-field shit-compact-field">
+                    {{ comment_form.visibility.label_tag }}
+                    {{ comment_form.visibility }}
+                </div>
+                {% else %}
+                <input type="hidden" name="visibility" value="PUBLIC">
+                {% endif %}
+                <button>Add entry</button>
+            </form>
+        </section>
+
+        <section class="card shit-panel">
+            <div class="shit-panel-heading">
+                <div>
+                    <p class="eyebrow">FILES</p>
+                    <h2>Attachments</h2>
+                </div>
+                <span class="muted">{{ attachments|length }} file{{ attachments|length|pluralize }}</span>
+            </div>
+            <div class="evidence-grid shit-evidence-grid">
+                {% for attachment in attachments %}
+                <div class="evidence-card">
+                    <a href="{{ attachment.file.url }}">{{ attachment.original_filename }}</a>
+                    <small>{{ attachment.uploaded_by }} · {{ attachment.created_at|date:"Y-m-d H:i" }} · {{ attachment.size_bytes }} bytes</small>
+                    <small class="mono hash">SHA-256 {{ attachment.sha256 }}</small>
+                </div>
+                {% empty %}
+                <p class="muted">No attachments.</p>
+                {% endfor %}
+            </div>
+            <form method="post" enctype="multipart/form-data" action="{% url 'shit:attachment' ticket.ticket_number %}" class="stack-form shit-attachment-form">
+                {% csrf_token %}
+                <div class="field shit-field">
+                    {{ attachment_form.file.label_tag }}
+                    {{ attachment_form.file }}
+                </div>
+                <button>Add attachment</button>
+            </form>
+        </section>
+
+        {% if can_manage %}
+        <section class="card shit-panel">
+            <div class="shit-panel-heading">
+                <div>
+                    <p class="eyebrow">AUDIT</p>
+                    <h2>Event history</h2>
+                </div>
+                <span class="muted">Newest first</span>
+            </div>
+            <div class="timeline shit-timeline">
+                {% for event in events %}
+                <article>
+                    <time>{{ event.occurred_at|date:"Y-m-d H:i:s" }}</time>
+                    <strong>{{ event.get_event_type_display }}</strong>
+                    <span>{{ event.summary }}</span>
+                    <small>{{ event.actor }}</small>
+                </article>
+                {% empty %}
+                <p class="muted">No events.</p>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </main>
+
+    <aside class="shit-workbench-sidebar" data-detail-sidebar>
+        <details class="shit-sidebar-section" open data-detail-section>
+            <summary>
+                <span><span class="eyebrow">RECORD</span><strong>Ticket context</strong></span>
+                <span class="shit-collapse-indicator" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="card shit-panel shit-record-panel shit-sidebar-panel-body">
+                <div class="shit-panel-heading shit-dense-only-heading">
+                    <div><p class="eyebrow">RECORD</p><h2>Ticket context</h2></div>
+                </div>
+                <dl class="record-grid shit-record-grid">
+                    <dt>Requester</dt><dd>{{ ticket.requester }}</dd>
+                    <dt>Type</dt><dd>{{ ticket.get_ticket_type_display }}</dd>
+                    <dt>Severity</dt><dd><span class="sev sev-{{ ticket.severity|lower }}">{{ ticket.get_severity_display }}</span></dd>
+                    <dt>Status</dt><dd>{{ ticket.get_status_display }}</dd>
+                    <dt>Department</dt><dd>{{ ticket.assigned_department|default:"—" }}</dd>
+                    <dt>Assignee</dt><dd>{{ ticket.assigned_user|default:"—" }}</dd>
+                    <dt>PSOP</dt><dd>{{ ticket.related_document|default:"—" }}</dd>
+                    <dt>Queue position</dt><dd>{{ ticket.queue_position }}</dd>
+                    <dt>Created</dt><dd>{{ ticket.created_at|date:"Y-m-d H:i" }}</dd>
+                    <dt>Updated</dt><dd>{{ ticket.updated_at|date:"Y-m-d H:i" }}</dd>
+                    <dt>Resolved</dt><dd>{{ ticket.resolved_at|date:"Y-m-d H:i"|default:"—" }}</dd>
+                    <dt>Closed</dt><dd>{{ ticket.closed_at|date:"Y-m-d H:i"|default:"—" }}</dd>
+                </dl>
+            </div>
+        </details>
+
+        <details class="shit-sidebar-section" open data-detail-section>
+            <summary>
+                <span><span class="eyebrow">BAM</span><strong>Asset</strong></span>
+                <span class="shit-collapse-indicator" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="card shit-panel shit-asset-context shit-sidebar-panel-body">
+                <div class="shit-panel-heading shit-dense-only-heading">
+                    <div><p class="eyebrow">BAM</p><h2>Asset</h2></div>
+                </div>
+                {% if ticket.related_asset %}
+                <a class="mono shit-asset-id" href="{% url 'bam:detail' ticket.related_asset.asset_id %}">{{ ticket.related_asset.asset_id }}</a>
+                <dl class="record-grid shit-record-grid">
+                    <dt>Type</dt><dd>{{ ticket.related_asset.asset_type }}</dd>
+                    <dt>Hardware</dt><dd>{% if ticket.related_asset.manufacturer or ticket.related_asset.model %}{{ ticket.related_asset.manufacturer }} {{ ticket.related_asset.model }}{% else %}—{% endif %}</dd>
+                    <dt>Status</dt><dd>{{ ticket.related_asset.status }}</dd>
+                    <dt>Department</dt><dd>{{ ticket.related_asset.department.code }}</dd>
+                    <dt>Custodian</dt><dd>{{ ticket.related_asset.current_custodian|default:"—" }}</dd>
+                    <dt>Serial</dt><dd class="mono">{{ ticket.related_asset.serial_number|default:"—" }}</dd>
+                </dl>
+                <a href="{% url 'bam:detail' ticket.related_asset.asset_id %}">Open BAM record</a>
+                {% else %}
+                <p class="muted">No BAM asset linked to this ticket.</p>
+                {% endif %}
+            </div>
+        </details>
+
+        {% if can_manage %}
+        <details class="shit-sidebar-section shit-manage-section" open data-detail-section>
+            <summary>
+                <span><span class="eyebrow">OPERATIONS</span><strong>Manage ticket</strong></span>
+                <span class="shit-collapse-indicator" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="card shit-panel shit-manage-panel shit-sidebar-panel-body">
+                <div class="shit-panel-heading shit-dense-only-heading">
+                    <div><p class="eyebrow">OPERATIONS</p><h2>Manage ticket</h2></div>
+                </div>
+                <form method="post" action="{% url 'shit:manage' ticket.ticket_number %}" class="stack-form">
+                    {% csrf_token %}
+                    {{ manage_form.non_field_errors }}
+                    <div class="shit-inline-fields">
+                        <div class="field shit-field">
+                            {{ manage_form.status.label_tag }}
+                            {{ manage_form.status }}
+                            {% for error in manage_form.status.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                        </div>
+                        <div class="field shit-field">
+                            {{ manage_form.severity.label_tag }}
+                            {{ manage_form.severity }}
+                            {% for error in manage_form.severity.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="field shit-field">
+                        {{ manage_form.assigned_department.label_tag }}
+                        {{ manage_form.assigned_department }}
+                        {% for error in manage_form.assigned_department.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                    <div class="field shit-field">
+                        {{ manage_form.assigned_user.label_tag }}
+                        {{ manage_form.assigned_user }}
+                        {% for error in manage_form.assigned_user.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                    <div class="shit-asset-picker shit-asset-picker-compact" data-asset-picker>
+                        <label for="asset-search-manage">Find asset</label>
+                        <input id="asset-search-manage" type="search" data-asset-filter placeholder="Filter BAM assets..." autocomplete="off">
+                        <div class="field shit-field">
+                            {{ manage_form.related_asset.label_tag }}
+                            {{ manage_form.related_asset }}
+                            {% for error in manage_form.related_asset.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                        </div>
+                        <small class="muted" data-asset-context></small>
+                    </div>
+                    <div class="field shit-field">
+                        {{ manage_form.related_document.label_tag }}
+                        {{ manage_form.related_document }}
+                        {% for error in manage_form.related_document.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                    <button>Update ticket</button>
+                </form>
+            </div>
+        </details>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/shit.js' %}" defer></script>
 {% endblock %}
