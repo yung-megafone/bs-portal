@@ -1,4 +1,135 @@
-{% extends "base.html" %}{% block title %}Submit Ticket — SHIT{% endblock %}{% block content %}
-<section class="hero compact-hero"><p class="eyebrow">SHIT TICKETING</p><h1>Submit a ticket</h1><p class="lede">Route work to the responsible department and keep the history attached to the work.</p></section>
-<section class="card form-card"><form method="post" enctype="multipart/form-data" class="form-grid">{% csrf_token %}{% for field in form %}<div class="field {% if field.name == 'description' or field.name == 'title' %}span-2{% endif %}">{{ field.label_tag }}{{ field }}{% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}</div>{% endfor %}<div class="span-2 action-row"><button type="submit">Create ticket</button><a href="{% url 'shit:list' %}">Cancel</a></div></form></section>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Submit Ticket — SHIT{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/shit.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="hero compact-hero shit-hero">
+    <div class="hero-row">
+        <div>
+            <p class="eyebrow">SHIT TICKETING</p>
+            <h1>Submit a ticket</h1>
+            <p class="lede">Capture the work, route it once, and keep operational context attached to the same record.</p>
+        </div>
+        <a href="{% url 'shit:list' %}">Back to tickets</a>
+    </div>
+</section>
+
+<form method="post" enctype="multipart/form-data" class="shit-workbench-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="shit-workbench-grid">
+        <main class="shit-workbench-main stack">
+            <section class="card shit-panel">
+                <div class="shit-panel-heading">
+                    <div>
+                        <p class="eyebrow">WORK REQUEST</p>
+                        <h2>Summary</h2>
+                    </div>
+                    <span class="muted">Required</span>
+                </div>
+
+                <div class="field shit-field">
+                    {{ form.title.label_tag }}
+                    {{ form.title }}
+                    {% for error in form.title.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="field shit-field">
+                    {{ form.description.label_tag }}
+                    {{ form.description }}
+                    {% for error in form.description.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </div>
+            </section>
+
+            <section class="card shit-panel">
+                <div class="shit-panel-heading">
+                    <div>
+                        <p class="eyebrow">CLASSIFICATION</p>
+                        <h2>Related information</h2>
+                    </div>
+                </div>
+                <div class="shit-inline-fields">
+                    <div class="field shit-field">
+                        {{ form.ticket_type.label_tag }}
+                        {{ form.ticket_type }}
+                        {% for error in form.ticket_type.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                    <div class="field shit-field">
+                        {{ form.related_document.label_tag }}
+                        {{ form.related_document }}
+                        {% if form.related_document.help_text %}<small class="muted">{{ form.related_document.help_text }}</small>{% endif %}
+                        {% for error in form.related_document.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                </div>
+                <div class="field shit-field">
+                    {{ form.attachment.label_tag }}
+                    {{ form.attachment }}
+                    <small class="muted">Optional initial evidence or supporting file. Additional attachments can be added after creation.</small>
+                    {% for error in form.attachment.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </div>
+            </section>
+
+            <section class="card shit-panel">
+                <div class="shit-panel-heading">
+                    <div>
+                        <p class="eyebrow">BAM LINK</p>
+                        <h2>Asset context</h2>
+                    </div>
+                    <span class="muted">Uses the existing BAM record; no asset data is copied into SHIT.</span>
+                </div>
+                <div class="shit-asset-picker" data-asset-picker>
+                    <label for="asset-search-create">Find asset</label>
+                    <input id="asset-search-create" type="search" data-asset-filter placeholder="Filter by asset ID, hardware, department, status, custodian..." autocomplete="off">
+                    <div class="field shit-field">
+                        {{ form.related_asset.label_tag }}
+                        {{ form.related_asset }}
+                        {% for error in form.related_asset.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                    <small class="muted" data-asset-context>Selecting an asset links this ticket to BAM. Location is not duplicated because the current BAM Asset model does not expose a dedicated location field.</small>
+                </div>
+            </section>
+        </main>
+
+        <aside class="shit-workbench-sidebar stack">
+            <section class="card shit-panel shit-ops-panel">
+                <div class="shit-panel-heading">
+                    <div>
+                        <p class="eyebrow">OPERATIONS</p>
+                        <h2>Routing</h2>
+                    </div>
+                </div>
+                <div class="field shit-field">
+                    {{ form.severity.label_tag }}
+                    {{ form.severity }}
+                    <small class="muted">Severity communicates impact. It does not control board order.</small>
+                    {% for error in form.severity.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="field shit-field">
+                    {{ form.assigned_department.label_tag }}
+                    {{ form.assigned_department }}
+                    {% for error in form.assigned_department.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                </div>
+                <dl class="shit-readonly-facts">
+                    <div><dt>Status</dt><dd>New on creation</dd></div>
+                    <div><dt>Assignee</dt><dd>Unassigned on creation</dd></div>
+                </dl>
+            </section>
+
+            <section class="card shit-submit-panel">
+                <strong>Create this ticket?</strong>
+                <p class="muted">Normal SHIT validation, ticket-number allocation, audit creation, and attachment handling remain in effect.</p>
+                <button type="submit">Create ticket</button>
+                <a href="{% url 'shit:list' %}">Cancel</a>
+            </section>
+        </aside>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/shit.js' %}" defer></script>
 {% endblock %}
