@@ -1,8 +1,186 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}SHIT — B.S. Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/shit.css' %}">
+{% endblock %}
+
 {% block content %}
-<section class="hero compact-hero"><div class="hero-row"><div><p class="eyebrow">SOFTWARE HELPDESK AND INTERNET TECHNOLOGY</p><h1>SHIT</h1><p class="lede">Because you don't reach out unless SHIT.</p></div><a class="button" href="{% url 'shit:create' %}">Submit ticket</a></div></section>
-<div class="ticket-tabs"><a class="{% if scope == 'mine' %}active{% endif %}" href="?scope=mine">My tickets</a><a class="{% if scope == 'department' %}active{% endif %}" href="?scope=department">Department queue</a>{% if user.is_staff %}<a class="{% if scope == 'all' %}active{% endif %}" href="?scope=all">All tickets</a>{% endif %}</div>
-<section class="card"><form class="search-row" method="get"><input type="hidden" name="scope" value="{{ scope }}"><input name="q" value="{{ query }}" placeholder="Ticket, title, asset, PSOP..."><button>Search</button>{% if query %}<a href="?scope={{ scope }}">Clear</a>{% endif %}</form></section>
-<section class="card table-card"><div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Severity</th><th>Status</th><th>Title</th><th>Department</th><th>Assignee</th><th>Updated</th></tr></thead><tbody>{% for ticket in tickets %}<tr><td class="mono"><a href="{% url 'shit:detail' ticket.ticket_number %}">{{ ticket.ticket_number }}</a></td><td><span class="sev sev-{{ ticket.severity|lower }}">{{ ticket.get_severity_display }}</span></td><td><span class="pill">{{ ticket.get_status_display }}</span></td><td>{{ ticket.title }}</td><td>{% if ticket.assigned_department %}{{ ticket.assigned_department.code }}{% else %}—{% endif %}</td><td>{{ ticket.assigned_user|default:"—" }}</td><td>{{ ticket.updated_at|date:"Y-m-d H:i" }}</td></tr>{% empty %}<tr><td colspan="7" class="muted">No tickets in this view.</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="shit-workspace-header{% if view_mode == 'board' %} is-board{% endif %}">
+    <div class="shit-workspace-primary">
+        <div class="shit-workspace-identity">
+            <p class="eyebrow">SOFTWARE HELPDESK AND INTERNET TECHNOLOGY</p>
+            <div class="shit-workspace-titleline">
+                <h1>SHIT</h1>
+                <p>Because you don't reach out unless SHIT.</p>
+            </div>
+        </div>
+
+        <div class="shit-workspace-actions">
+            <div class="shit-view-toggle" role="group" aria-label="Ticket view">
+                <a class="{% if view_mode == 'list' %}active{% endif %}" href="?scope={{ scope }}&amp;view=list{% if query %}&amp;q={{ query|urlencode }}{% endif %}">List</a>
+                <a class="{% if view_mode == 'board' %}active{% endif %}" href="?scope={{ scope }}&amp;view=board{% if query %}&amp;q={{ query|urlencode }}{% endif %}">Board</a>
+            </div>
+            <a class="button shit-submit-ticket" href="{% url 'shit:create' %}">Submit ticket</a>
+        </div>
+    </div>
+
+    <div class="shit-workspace-controls">
+        <nav class="ticket-tabs shit-scope-tabs" aria-label="Ticket scope">
+            <a class="{% if scope == 'mine' %}active{% endif %}" href="?scope=mine&amp;view={{ view_mode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">My tickets</a>
+            <a class="{% if scope == 'department' %}active{% endif %}" href="?scope=department&amp;view={{ view_mode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">Department queue</a>
+            {% if user.is_staff or user.is_superuser %}
+            <a class="{% if scope == 'all' %}active{% endif %}" href="?scope=all&amp;view={{ view_mode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">All tickets</a>
+            {% endif %}
+        </nav>
+
+        <form class="shit-workspace-search" method="get" role="search">
+            <input type="hidden" name="scope" value="{{ scope }}">
+            <input type="hidden" name="view" value="{{ view_mode }}">
+            <input name="q" value="{{ query }}" placeholder="Search ticket, title, asset, PSOP…" aria-label="Search tickets">
+            {% if query %}<a class="shit-search-clear" href="?scope={{ scope }}&amp;view={{ view_mode }}">Clear</a>{% endif %}
+            <button type="submit">Search</button>
+        </form>
+    </div>
+</section>
+
+{% if view_mode == 'board' %}
+<section class="shit-board-shell" aria-label="Ticket board" data-shit-board>
+    <div class="shit-board-toolbar">
+        <div>
+            <strong>Operational queue</strong>
+            <span class="muted">{{ ticket_count }} ticket{{ ticket_count|pluralize }} shown · drag only where you have manage permission</span>
+        </div>
+        <span class="muted">Order is independent of severity.</span>
+    </div>
+
+    <div class="shit-board" role="region" aria-label="SHIT ticket status board" tabindex="0">
+        {% for column in board_columns %}
+        <section class="shit-board-column status-{{ column.status|lower }}" data-status="{{ column.status }}" data-status-label="{{ column.label }}">
+            <header class="shit-board-column-header">
+                <div>
+                    <span class="shit-status-dot" aria-hidden="true"></span>
+                    <h2>{{ column.label }}</h2>
+                </div>
+                <span class="shit-column-count" data-column-count>{{ column.tickets|length }}</span>
+            </header>
+
+            <div class="shit-board-dropzone" data-dropzone>
+                {% for ticket in column.tickets %}
+                <article
+                    class="shit-ticket-card status-{{ ticket.status|lower }} {% if not ticket.assigned_user %}is-unassigned{% endif %}"
+                    data-ticket-number="{{ ticket.ticket_number }}"
+                    data-move-url="{% url 'shit:board_move' ticket.ticket_number %}"
+                    data-can-manage="{% if ticket.board_can_manage %}true{% else %}false{% endif %}"
+                    {% if ticket.board_can_manage %}draggable="true"{% endif %}
+                >
+                    <div class="shit-ticket-card-topline">
+                        <a class="mono shit-ticket-number" href="{% url 'shit:detail' ticket.ticket_number %}">{{ ticket.ticket_number }}</a>
+                        <span class="sev sev-{{ ticket.severity|lower }}">{{ ticket.get_severity_display }}</span>
+                    </div>
+                    <h3><a href="{% url 'shit:detail' ticket.ticket_number %}">{{ ticket.title }}</a></h3>
+
+                    <dl class="shit-card-facts">
+                        <div><dt>Status</dt><dd data-card-status>{{ ticket.get_status_display }}</dd></div>
+                        <div><dt>Queue</dt><dd>{% if ticket.assigned_department %}{{ ticket.assigned_department.code }}{% else %}Unrouted{% endif %}</dd></div>
+                        <div><dt>Assignee</dt><dd>{% if ticket.assigned_user %}{{ ticket.assigned_user }}{% else %}<span class="shit-unassigned">Unassigned</span>{% endif %}</dd></div>
+                        <div><dt>Age</dt><dd>{{ ticket.created_at|timesince }} ago</dd></div>
+                    </dl>
+
+                    {% if ticket.related_asset or ticket.related_document %}
+                    <div class="shit-card-links">
+                        {% if ticket.related_asset %}
+                        <a class="mono" href="{% url 'bam:detail' ticket.related_asset.asset_id %}">{{ ticket.related_asset.asset_id }}</a>
+                        {% endif %}
+                        {% if ticket.related_document %}<span class="mono">{{ ticket.related_document }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if ticket.board_can_manage %}
+                    <details class="shit-board-actions">
+                        <summary>Move / reorder</summary>
+                        <div class="shit-board-actions-panel">
+                            <form method="post" action="{% url 'shit:board_move' ticket.ticket_number %}" class="shit-board-status-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="scope" value="{{ scope }}">
+                                <input type="hidden" name="query" value="{{ query }}">
+                                <label for="status-{{ ticket.id }}">Status</label>
+                                <select id="status-{{ ticket.id }}" name="status">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if value == ticket.status %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit">Apply</button>
+                            </form>
+                            <div class="shit-reorder-buttons" aria-label="Queue order controls">
+                                <form method="post" action="{% url 'shit:board_move' ticket.ticket_number %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="{{ ticket.status }}">
+                                    <input type="hidden" name="direction" value="up">
+                                    <input type="hidden" name="scope" value="{{ scope }}">
+                                    <input type="hidden" name="query" value="{{ query }}">
+                                    <button type="submit" title="Move up one position">↑ Up</button>
+                                </form>
+                                <form method="post" action="{% url 'shit:board_move' ticket.ticket_number %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="{{ ticket.status }}">
+                                    <input type="hidden" name="direction" value="down">
+                                    <input type="hidden" name="scope" value="{{ scope }}">
+                                    <input type="hidden" name="query" value="{{ query }}">
+                                    <button type="submit" title="Move down one position">↓ Down</button>
+                                </form>
+                            </div>
+                        </div>
+                    </details>
+                    {% endif %}
+                </article>
+                {% empty %}
+                <div class="shit-board-empty" data-empty-state>No tickets</div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    <p class="shit-board-live sr-only" aria-live="polite" data-board-live></p>
+</section>
+{% else %}
+<section class="card table-card shit-list-card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ticket</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Title</th>
+                    <th>Department</th>
+                    <th>Assignee</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td class="mono"><a href="{% url 'shit:detail' ticket.ticket_number %}">{{ ticket.ticket_number }}</a></td>
+                    <td><span class="sev sev-{{ ticket.severity|lower }}">{{ ticket.get_severity_display }}</span></td>
+                    <td><span class="pill status-{{ ticket.status|lower }}">{{ ticket.get_status_display }}</span></td>
+                    <td>{{ ticket.title }}</td>
+                    <td>{% if ticket.assigned_department %}{{ ticket.assigned_department.code }}{% else %}—{% endif %}</td>
+                    <td>{{ ticket.assigned_user|default:"—" }}</td>
+                    <td>{{ ticket.updated_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="muted">No tickets in this view.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/shit.js' %}" defer></script>
 {% endblock %}
