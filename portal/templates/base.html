@@ -5,7 +5,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}B.S. Portal{% endblock %}</title>
-
     <script>
         (function () {
             const allowedThemes = ["bs-blue", "bs-red"];
@@ -21,11 +20,11 @@
             document.documentElement.dataset.theme = theme;
         }());
     </script>
-
     <link rel="stylesheet" href="{% static 'css/portal.css' %}">
     <link rel="stylesheet" href="{% static 'css/account-menu.css' %}">
     <link rel="stylesheet" href="{% static 'css/timeclock.css' %}">
     <script src="{% static 'js/theme.js' %}" defer></script>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
 <header class="site-header">
@@ -33,7 +32,6 @@
         <a class="brand" href="{% url 'dashboard' %}">B.S. Portal</a>
         <span class="alpha-badge">ALPHA</span>
     </div>
-
     {% if user.is_authenticated %}
     <div class="header-actions">
         <nav class="primary-nav" aria-label="Primary navigation">
@@ -43,13 +41,11 @@
             <a href="{% url 'shit:list' %}">SHIT</a>
             <a href="{% url 'timeclock:home' %}">Timeclock</a>
         </nav>
-
         <details class="account-menu" id="account-menu">
             <summary class="account-trigger{% if user.is_staff %} is-admin{% endif %}">
                 <span>{{ user.get_username }}</span>
                 <span class="account-chevron" aria-hidden="true">▾</span>
             </summary>
-
             <div class="account-panel">
                 <div class="account-identity">
                     <strong>{{ user.get_username }}</strong>
@@ -58,12 +54,10 @@
 
                 <div class="account-section">
                     <span class="account-section-label">Appearance</span>
-
                     <button type="button" class="theme-menu-option" data-theme-option="bs-blue">
                         <span class="theme-option-indicator" aria-hidden="true">✓</span>
                         <span>B.S. Blue</span>
                     </button>
-
                     <button type="button" class="theme-menu-option" data-theme-option="bs-red">
                         <span class="theme-option-indicator" aria-hidden="true">✓</span>
                         <span>B.S. Red</span>
@@ -75,7 +69,6 @@
                     <a href="/admin/">Admin</a>
                 </div>
                 {% endif %}
-
                 <div class="account-section account-links">
                     <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
@@ -91,7 +84,7 @@
 <main class="container">
     {% block content %}{% endblock %}
 </main>
-
 <footer class="footer">B.S. Supply Co. internal operations platform — alpha environment</footer>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>
