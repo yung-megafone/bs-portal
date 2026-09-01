@@ -1,0 +1,1115 @@
+/* SHIT ticketing workbench additions. Uses the existing portal theme tokens. */
+
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+
+/* Ticket workspace header */
+.shit-workspace-header {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--bs-border);
+    border-radius: 9px;
+    background: var(--bs-surface);
+    overflow: hidden;
+}
+
+.shit-workspace-header.is-board {
+    width: calc(100vw - 2rem);
+    box-sizing: border-box;
+    margin-left: 50%;
+    transform: translateX(-50%);
+}
+
+.shit-workspace-primary,
+.shit-workspace-controls,
+.shit-workspace-actions,
+.shit-view-toggle,
+.shit-board-toolbar,
+.shit-board-column-header,
+.shit-ticket-card-topline,
+.shit-panel-heading,
+.shit-reorder-buttons {
+    display: flex;
+    align-items: center;
+}
+
+.shit-workspace-primary {
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 72px;
+    padding: 0.7rem 0.85rem;
+    background:
+        linear-gradient(90deg, color-mix(in srgb, var(--bs-primary) 8%, transparent), transparent 32%),
+        var(--bs-surface-raised);
+}
+
+.shit-workspace-identity {
+    min-width: 0;
+}
+
+.shit-workspace-identity .eyebrow {
+    margin: 0 0 0.18rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+}
+
+.shit-workspace-titleline {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+.shit-workspace-titleline h1 {
+    margin: 0;
+    font-size: clamp(1.75rem, 2.2vw, 2.35rem);
+    line-height: 1;
+    letter-spacing: -0.025em;
+}
+
+.shit-workspace-titleline p {
+    margin: 0;
+    color: var(--bs-text-muted);
+    font-size: 0.76rem;
+    white-space: nowrap;
+}
+
+.shit-workspace-actions {
+    justify-content: flex-end;
+    gap: 0.55rem;
+    flex: 0 0 auto;
+}
+
+.shit-view-toggle {
+    gap: 0;
+    padding: 2px;
+    border: 1px solid var(--bs-border);
+    border-radius: 7px;
+    background: var(--bs-field);
+}
+
+.shit-view-toggle a {
+    display: block;
+    padding: 0.36rem 0.68rem;
+    border-radius: 5px;
+    color: var(--bs-text-muted);
+    text-decoration: none;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.shit-view-toggle a:hover,
+.shit-view-toggle a:focus-visible {
+    color: var(--bs-text);
+    background: var(--bs-surface-raised);
+}
+
+.shit-view-toggle a.active {
+    color: var(--bs-text);
+    background: var(--bs-primary);
+}
+
+.shit-submit-ticket {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.shit-workspace-controls {
+    gap: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    border-top: 1px solid var(--bs-border);
+    background: color-mix(in srgb, var(--bs-field) 72%, var(--bs-surface) 28%);
+}
+
+.shit-scope-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+.shit-scope-tabs a {
+    white-space: nowrap;
+}
+
+.shit-workspace-search {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 220px;
+    margin-left: auto;
+    flex: 1 1 620px;
+}
+
+.shit-workspace-search input[name="q"] {
+    min-width: 0;
+    width: 100%;
+    height: 34px;
+    box-sizing: border-box;
+}
+
+.shit-workspace-search button {
+    min-height: 34px;
+    flex: 0 0 auto;
+}
+
+.shit-search-clear {
+    flex: 0 0 auto;
+    color: var(--bs-text-muted);
+    font-size: 0.72rem;
+    text-decoration: none;
+}
+
+.shit-search-clear:hover,
+.shit-search-clear:focus-visible {
+    color: var(--bs-text);
+    text-decoration: underline;
+}
+
+/* Board */
+.shit-board-shell {
+    /*
+     * The normal portal container is intentionally reading-width constrained.
+     * The operational board is different: it benefits from horizontal working
+     * room, so let this surface break out to almost the full viewport while
+     * leaving the List view and the rest of SHIT on the normal container width.
+     */
+    width: calc(100vw - 2rem);
+    box-sizing: border-box;
+    margin-left: 50%;
+    transform: translateX(-50%);
+    border: 1px solid var(--bs-border);
+    border-radius: 9px;
+    background: var(--bs-surface);
+    overflow: hidden;
+}
+
+.shit-board-toolbar {
+    justify-content: space-between;
+    padding: 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--bs-border);
+    background: var(--bs-surface-raised);
+    font-size: 0.82rem;
+}
+
+.shit-board-toolbar > div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.shit-board {
+    display: grid;
+    grid-auto-flow: column;
+    /* Fill wide monitors when possible; fall back to horizontal scrolling when not. */
+    grid-auto-columns: minmax(260px, 1fr);
+    align-items: stretch;
+    gap: 0.55rem;
+    overflow-x: auto;
+    padding: 0.65rem;
+    min-height: clamp(460px, calc(100vh - 390px), 760px);
+    scrollbar-color: var(--bs-border-strong) var(--bs-field);
+}
+
+.shit-board-column {
+    min-width: 0;
+    border: 1px solid var(--bs-border);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--bs-field) 90%, black 10%);
+    overflow: hidden;
+}
+
+.shit-board-column-header {
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid var(--bs-border);
+    background: var(--bs-surface-raised);
+}
+
+.shit-board-column-header > div {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+}
+
+.shit-board-column-header h2 {
+    margin: 0;
+    font-size: 0.76rem;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shit-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--bs-text-muted);
+    flex: 0 0 auto;
+}
+
+.status-new .shit-status-dot,
+.status-acknowledged .shit-status-dot {
+    background: var(--bs-primary);
+}
+
+.status-assigned .shit-status-dot {
+    background: var(--semantic-warning);
+}
+
+.status-in_progress .shit-status-dot {
+    background: var(--sev-4-fg);
+}
+
+.status-waiting_requester .shit-status-dot,
+.status-waiting_vendor .shit-status-dot {
+    background: var(--sev-3-fg);
+}
+
+.status-resolved .shit-status-dot,
+.status-closed .shit-status-dot {
+    background: var(--semantic-success);
+}
+
+.status-cancelled .shit-status-dot {
+    background: var(--semantic-error);
+}
+
+.shit-column-count {
+    min-width: 1.6rem;
+    padding: 0.08rem 0.4rem;
+    border: 1px solid var(--bs-border);
+    border-radius: 999px;
+    background: var(--bs-field);
+    color: var(--bs-text-muted);
+    text-align: center;
+    font: 700 0.72rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.shit-board-dropzone {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-height: clamp(400px, calc(100vh - 455px), 700px);
+    padding: 0.45rem;
+    transition: background 120ms ease, outline-color 120ms ease;
+}
+
+.shit-board-dropzone.is-drag-over {
+    background: color-mix(in srgb, var(--bs-primary) 7%, transparent);
+    outline: 1px dashed var(--bs-primary);
+    outline-offset: -3px;
+}
+
+.shit-board-empty {
+    padding: 1rem 0.5rem;
+    color: var(--bs-text-muted);
+    font-size: 0.78rem;
+    text-align: center;
+    border: 1px dashed var(--bs-border);
+    border-radius: 6px;
+}
+
+.shit-ticket-card {
+    position: relative;
+    padding: 0.58rem;
+    border: 1px solid var(--bs-border);
+    border-left-width: 3px;
+    border-radius: 6px;
+    background: var(--bs-surface);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 13%);
+}
+
+.shit-ticket-card[draggable="true"] {
+    cursor: grab;
+}
+
+.shit-ticket-card[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.shit-ticket-card.is-dragging {
+    opacity: 0.42;
+    box-shadow: none;
+}
+
+.shit-ticket-card.status-new,
+.shit-ticket-card.status-acknowledged {
+    border-left-color: var(--bs-primary);
+}
+
+.shit-ticket-card.status-assigned {
+    border-left-color: var(--semantic-warning);
+}
+
+.shit-ticket-card.status-in_progress {
+    border-left-color: var(--sev-4-fg);
+}
+
+.shit-ticket-card.status-waiting_requester,
+.shit-ticket-card.status-waiting_vendor {
+    border-left-color: var(--sev-3-fg);
+}
+
+.shit-ticket-card.status-resolved,
+.shit-ticket-card.status-closed {
+    border-left-color: var(--semantic-success);
+}
+
+.shit-ticket-card.status-cancelled {
+    border-left-color: var(--semantic-error);
+}
+
+.shit-ticket-card-topline {
+    justify-content: space-between;
+    margin-bottom: 0.42rem;
+}
+
+.shit-ticket-number {
+    font-size: 0.71rem;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+}
+
+.shit-ticket-card h3 {
+    margin: 0 0 0.52rem;
+    font-size: 0.93rem;
+    line-height: 1.28;
+}
+
+.shit-ticket-card h3 a {
+    color: var(--bs-text);
+    text-decoration: none;
+}
+
+.shit-ticket-card h3 a:hover,
+.shit-ticket-card h3 a:focus-visible {
+    text-decoration: underline;
+}
+
+.shit-card-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem 0.5rem;
+    margin: 0;
+}
+
+.shit-card-facts > div {
+    min-width: 0;
+}
+
+.shit-card-facts dt {
+    color: var(--bs-text-muted);
+    font-size: 0.61rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.shit-card-facts dd {
+    margin: 0.05rem 0 0;
+    font-size: 0.74rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shit-unassigned {
+    color: var(--semantic-warning);
+    font-weight: 700;
+}
+
+.shit-card-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.48rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--bs-border);
+    font-size: 0.68rem;
+}
+
+.shit-card-links > * {
+    padding: 0.12rem 0.32rem;
+    border: 1px solid var(--bs-border);
+    border-radius: 4px;
+    background: var(--bs-field);
+}
+
+.shit-board-actions {
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--bs-border);
+    padding-top: 0.35rem;
+}
+
+.shit-board-actions summary {
+    color: var(--bs-text-muted);
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.shit-board-actions-panel {
+    display: grid;
+    gap: 0.42rem;
+    margin-top: 0.45rem;
+}
+
+.shit-board-status-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.3rem;
+}
+
+.shit-board-status-form label {
+    grid-column: 1 / -1;
+    color: var(--bs-text-muted);
+    font-size: 0.65rem;
+}
+
+.shit-board-status-form select,
+.shit-board-status-form button,
+.shit-reorder-buttons button {
+    min-height: 30px;
+    font-size: 0.69rem;
+}
+
+.shit-reorder-buttons {
+    gap: 0.3rem;
+}
+
+.shit-reorder-buttons form {
+    flex: 1 1 0;
+}
+
+.shit-reorder-buttons button {
+    width: 100%;
+}
+
+/* Workbench create/detail */
+.shit-workbench-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    gap: 0.85rem;
+    align-items: start;
+}
+
+/*
+ * Ticket detail is an operational workspace, not a reading-width document.
+ * Break it out of the portal's normal centered container and give it roughly
+ * three quarters of the viewport. The ticket hero follows the same footprint
+ * so the heading and panels remain visually aligned.
+ */
+.shit-ticket-hero,
+.shit-detail-workbench {
+    width: min(75vw, 1600px);
+    box-sizing: border-box;
+    margin-left: 50%;
+    transform: translateX(-50%);
+}
+
+.shit-detail-workbench {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+    gap: 1.1rem;
+}
+
+.shit-workbench-main,
+.shit-workbench-sidebar {
+    min-width: 0;
+}
+
+.shit-workbench-sidebar {
+    position: sticky;
+    top: 0.8rem;
+}
+
+.shit-panel,
+.shit-submit-panel {
+    padding: 0.9rem;
+}
+
+.shit-panel-heading {
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.58rem;
+    border-bottom: 1px solid var(--bs-border);
+}
+
+.shit-panel-heading h2,
+.shit-panel-heading p {
+    margin-top: 0;
+}
+
+.shit-panel-heading h2 {
+    margin-bottom: 0;
+    font-size: 1rem;
+}
+
+.shit-panel-heading .eyebrow {
+    margin-bottom: 0.18rem;
+    font-size: 0.62rem;
+}
+
+.shit-field {
+    display: grid;
+    gap: 0.32rem;
+    margin-bottom: 0.72rem;
+}
+
+.shit-field:last-child {
+    margin-bottom: 0;
+}
+
+.shit-field > label,
+.shit-asset-picker > label {
+    color: var(--bs-text-muted);
+    font-size: 0.69rem;
+    font-weight: 800;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+}
+
+.shit-field input,
+.shit-field textarea,
+.shit-field select,
+.shit-asset-picker > input[type="search"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.shit-field textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.shit-inline-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
+.shit-readonly-facts {
+    display: grid;
+    gap: 0;
+    margin: 0.7rem 0 0;
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.shit-readonly-facts > div {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    background: var(--bs-field);
+}
+
+.shit-readonly-facts > div + div {
+    border-top: 1px solid var(--bs-border);
+}
+
+.shit-readonly-facts dt {
+    color: var(--bs-text-muted);
+    font-size: 0.68rem;
+}
+
+.shit-readonly-facts dd {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.shit-asset-picker {
+    display: grid;
+    gap: 0.42rem;
+}
+
+.shit-asset-picker select {
+    min-height: 42px;
+}
+
+.shit-asset-picker-compact {
+    padding: 0.6rem;
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    background: var(--bs-field);
+}
+
+.shit-submit-panel {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.shit-submit-panel p {
+    margin: 0;
+}
+
+.shit-submit-panel button {
+    width: 100%;
+}
+
+.shit-description {
+    line-height: 1.58;
+}
+
+.shit-thread .comment {
+    border-color: var(--bs-border);
+}
+
+.shit-entry-form,
+.shit-attachment-form {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bs-border);
+}
+
+.shit-compact-field select {
+    max-width: 260px;
+}
+
+.shit-evidence-grid .evidence-card {
+    background: var(--bs-field);
+    border-color: var(--bs-border);
+}
+
+.shit-record-grid {
+    grid-template-columns: minmax(90px, auto) minmax(0, 1fr);
+    font-size: 0.78rem;
+}
+
+.shit-record-grid dd {
+    overflow-wrap: anywhere;
+}
+
+.shit-asset-id {
+    display: inline-block;
+    margin-bottom: 0.65rem;
+    font-weight: 800;
+}
+
+.shit-manage-panel .shit-inline-fields {
+    gap: 0.5rem;
+}
+
+.shit-timeline article {
+    grid-template-columns: minmax(120px, auto) minmax(120px, auto) 1fr minmax(90px, auto);
+}
+
+.shit-list-card .status-in_progress,
+.shit-list-card .status-resolved,
+.shit-list-card .status-closed,
+.shit-list-card .status-cancelled,
+.shit-list-card .status-waiting_requester,
+.shit-list-card .status-waiting_vendor {
+    border-color: var(--bs-border-strong);
+}
+
+@media (max-width: 1280px) {
+    .shit-ticket-hero,
+    .shit-detail-workbench {
+        width: calc(100vw - 2rem);
+    }
+}
+
+@media (max-width: 980px) {
+    .shit-workspace-controls {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .shit-workspace-search {
+        width: 100%;
+        flex-basis: auto;
+        margin-left: 0;
+    }
+
+    .shit-workbench-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .shit-workbench-sidebar {
+        position: static;
+    }
+
+    .shit-board-toolbar,
+    .shit-board-toolbar > div {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 640px) {
+    .shit-workspace-header.is-board,
+    .shit-board-shell {
+        width: calc(100vw - 0.75rem);
+    }
+
+    .shit-workspace-primary {
+        align-items: flex-start;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .shit-workspace-titleline {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .shit-workspace-titleline p {
+        white-space: normal;
+    }
+
+    .shit-workspace-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .shit-scope-tabs {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 0.15rem;
+    }
+
+    .shit-workspace-search {
+        flex-wrap: wrap;
+    }
+
+    .shit-workspace-search input[name="q"] {
+        flex: 1 1 calc(100% - 70px);
+    }
+
+    .shit-inline-fields {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .shit-board {
+        grid-auto-columns: minmax(225px, 88vw);
+    }
+
+    .shit-panel-heading {
+        gap: 0.4rem;
+    }
+
+    .shit-panel-heading > .muted {
+        text-align: right;
+        font-size: 0.68rem;
+    }
+}
+
+/* Ticket detail density modes */
+.shit-detail-header-main {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.shit-detail-identity {
+    min-width: 0;
+}
+
+.shit-detail-titleline {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.shit-detail-titleline .ticket-title,
+.shit-detail-identity > h2 {
+    margin-top: 0;
+}
+
+.shit-detail-titleline .ticket-title {
+    margin-bottom: 0.2rem;
+}
+
+.shit-detail-identity > h2 {
+    margin-bottom: 0;
+    font-size: clamp(1rem, 1.2vw, 1.35rem);
+}
+
+.shit-detail-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.15rem;
+}
+
+.shit-density-toggle {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    background: var(--bs-field);
+}
+
+.shit-density-button {
+    min-height: 30px;
+    padding: 0.3rem 0.65rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--bs-text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.shit-density-button[aria-pressed="true"] {
+    background: var(--bs-primary);
+    color: #06111f;
+}
+
+.shit-detail-nav {
+    display: flex;
+    gap: 0.55rem;
+    font-size: 0.78rem;
+}
+
+.shit-detail-facts {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0;
+    margin: 0.9rem 0 0;
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bs-field);
+}
+
+.shit-detail-facts > div {
+    min-width: 0;
+    padding: 0.58rem 0.7rem;
+}
+
+.shit-detail-facts > div + div {
+    border-left: 1px solid var(--bs-border);
+}
+
+.shit-detail-facts dt {
+    color: var(--bs-text-muted);
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.shit-detail-facts dd {
+    margin: 0.16rem 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.shit-workbench-sidebar {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.shit-sidebar-section {
+    min-width: 0;
+}
+
+.shit-sidebar-section > summary {
+    display: none;
+}
+
+.shit-sidebar-section > .shit-sidebar-panel-body {
+    margin: 0;
+}
+
+/* Dense: expanded information panels, matching the dense mockup. */
+.shit-detail-workbench[data-density="dense"] {
+    grid-template-columns: minmax(0, 1fr) minmax(430px, 520px);
+}
+
+.shit-detail-workbench[data-density="dense"] .shit-workbench-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+}
+
+.shit-detail-workbench[data-density="dense"] .shit-manage-section {
+    grid-column: 1 / -1;
+}
+
+.shit-detail-workbench[data-density="dense"] .shit-record-grid {
+    grid-template-columns: minmax(80px, auto) minmax(0, 1fr);
+    font-size: 0.72rem;
+}
+
+.shit-detail-workbench[data-density="dense"] .shit-sidebar-panel-body {
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* Compact: sidebar becomes native, keyboard-accessible disclosure panels. */
+.shit-detail-workbench[data-density="compact"] {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-workbench-sidebar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-section {
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    background: var(--bs-card);
+    overflow: hidden;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-section > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 42px;
+    padding: 0.55rem 0.7rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-section > summary > span:first-child {
+    display: grid;
+    gap: 0.08rem;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-section > summary .eyebrow {
+    margin: 0;
+    font-size: 0.58rem;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-section > summary strong {
+    font-size: 0.78rem;
+}
+
+.shit-collapse-indicator {
+    color: var(--bs-text-muted);
+    transition: transform 120ms ease;
+}
+
+.shit-sidebar-section[open] .shit-collapse-indicator {
+    transform: rotate(180deg);
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-sidebar-panel-body {
+    border: 0;
+    border-top: 1px solid var(--bs-border);
+    border-radius: 0;
+    background: transparent;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-dense-only-heading {
+    display: none;
+}
+
+.shit-detail-workbench[data-density="compact"] .shit-record-grid {
+    font-size: 0.72rem;
+}
+
+@media (max-width: 1450px) {
+    .shit-detail-facts {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .shit-detail-facts > div:nth-child(4) {
+        border-left: 0;
+        border-top: 1px solid var(--bs-border);
+    }
+
+    .shit-detail-facts > div:nth-child(5),
+    .shit-detail-facts > div:nth-child(6) {
+        border-top: 1px solid var(--bs-border);
+    }
+}
+
+@media (max-width: 1100px) {
+    .shit-detail-header-main {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .shit-detail-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 980px) {
+    .shit-detail-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .shit-detail-facts > div {
+        border-top: 1px solid var(--bs-border);
+    }
+
+    .shit-detail-facts > div:nth-child(-n+2) {
+        border-top: 0;
+    }
+
+    .shit-detail-facts > div:nth-child(odd) {
+        border-left: 0;
+    }
+
+    .shit-detail-workbench[data-density="dense"],
+    .shit-detail-workbench[data-density="compact"] {
+        grid-template-columns: 1fr;
+    }
+
+    .shit-detail-workbench[data-density="dense"] .shit-workbench-sidebar {
+        grid-template-columns: 1fr;
+    }
+
+    .shit-detail-workbench[data-density="dense"] .shit-manage-section {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 560px) {
+    .shit-detail-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .shit-detail-facts > div + div {
+        border-left: 0;
+        border-top: 1px solid var(--bs-border);
+    }
+
+    .shit-detail-titleline {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+}
