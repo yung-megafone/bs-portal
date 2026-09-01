@@ -1,39 +1,134 @@
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 
-from .forms import TicketAttachmentForm, TicketCommentForm, TicketCreateForm, TicketManageForm
+from .forms import (
+    TicketAttachmentForm,
+    TicketBoardMoveForm,
+    TicketCommentForm,
+    TicketCreateForm,
+    TicketManageForm,
+)
 from .models import Ticket, TicketComment
 from .permissions import can_manage_ticket, can_view_ticket
-from .services import add_attachment, add_comment, create_ticket, update_ticket
+from .services import (
+    add_attachment,
+    add_comment,
+    create_ticket,
+    move_ticket_on_board,
+    update_ticket,
+)
+
+
+TICKET_SELECT_RELATED = (
+    "requester",
+    "assigned_department",
+    "assigned_user",
+    "related_asset",
+    "related_asset__department",
+    "related_asset__asset_type",
+    "related_asset__status",
+    "related_asset__current_custodian",
+)
 
 
 def _visible_tickets(user):
-    qs = Ticket.objects.select_related("requester", "assigned_department", "assigned_user", "related_asset")
+    qs = Ticket.objects.select_related(*TICKET_SELECT_RELATED)
     if user.is_staff or user.is_superuser:
         return qs
-    department_ids = user.department_memberships.filter(is_active=True).values_list("department_id", flat=True)
-    return qs.filter(Q(requester=user) | Q(assigned_user=user) | Q(assigned_department_id__in=department_ids)).distinct()
+    department_ids = user.department_memberships.filter(is_active=True).values_list(
+        "department_id",
+        flat=True,
+    )
+    return qs.filter(
+        Q(requester=user)
+        | Q(assigned_user=user)
+        | Q(assigned_department_id__in=department_ids)
+    ).distinct()
+
+
+def _is_ajax(request):
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
 @login_required
 def ticket_list(request):
     scope = request.GET.get("scope", "mine")
     query = request.GET.get("q", "").strip()
+    view_mode = request.GET.get("view", "list")
+    if view_mode not in {"list", "board"}:
+        view_mode = "list"
+
+    active_department_ids = set(
+        request.user.department_memberships.filter(is_active=True).values_list(
+            "department_id",
+            flat=True,
+        )
+    )
+
     tickets = _visible_tickets(request.user)
     if scope == "mine":
-        tickets = tickets.filter(Q(requester=request.user) | Q(assigned_user=request.user))
+        tickets = tickets.filter(
+            Q(requester=request.user) | Q(assigned_user=request.user)
+        )
     elif scope == "department":
-        department_ids = request.user.department_memberships.filter(is_active=True).values_list("department_id", flat=True)
-        tickets = tickets.filter(assigned_department_id__in=department_ids)
-    elif scope == "all" and not (request.user.is_staff or request.user.is_superuser):
+        tickets = tickets.filter(assigned_department_id__in=active_department_ids)
+    elif scope == "all" and not (
+        request.user.is_staff or request.user.is_superuser
+    ):
         scope = "mine"
-        tickets = tickets.filter(Q(requester=request.user) | Q(assigned_user=request.user))
+        tickets = tickets.filter(
+            Q(requester=request.user) | Q(assigned_user=request.user)
+        )
+
     if query:
-        tickets = tickets.filter(Q(ticket_number__icontains=query) | Q(title__icontains=query) | Q(description__icontains=query) | Q(related_document__icontains=query) | Q(related_asset__asset_id__icontains=query))
-    return render(request, "shit/ticket_list.html", {"tickets": tickets[:500], "scope": scope, "query": query})
+        tickets = tickets.filter(
+            Q(ticket_number__icontains=query)
+            | Q(title__icontains=query)
+            | Q(description__icontains=query)
+            | Q(related_document__icontains=query)
+            | Q(related_asset__asset_id__icontains=query)
+        )
+
+    context = {
+        "scope": scope,
+        "query": query,
+        "view_mode": view_mode,
+        "status_choices": list(Ticket.Status.choices),
+    }
+
+    if view_mode == "board":
+        board_tickets = list(
+            tickets.order_by("queue_position", "-created_at", "ticket_number")[:500]
+        )
+        is_global_agent = request.user.is_staff or request.user.is_superuser
+        for ticket in board_tickets:
+            ticket.board_can_manage = bool(
+                is_global_agent
+                or ticket.assigned_user_id == request.user.id
+                or ticket.assigned_department_id in active_department_ids
+            )
+
+        columns = [
+            {"status": status, "label": label, "tickets": []}
+            for status, label in Ticket.Status.choices
+        ]
+        columns_by_status = {column["status"]: column for column in columns}
+        for ticket in board_tickets:
+            columns_by_status[ticket.status]["tickets"].append(ticket)
+
+        context["board_columns"] = columns
+        context["ticket_count"] = len(board_tickets)
+    else:
+        context["tickets"] = tickets[:500]
+
+    return render(request, "shit/ticket_list.html", context)
 
 
 @login_required
@@ -41,9 +136,27 @@ def ticket_create(request):
     if request.method == "POST":
         form = TicketCreateForm(request.POST, request.FILES)
         if form.is_valid():
-            ticket = create_ticket(actor=request.user, **{k: form.cleaned_data[k] for k in ["title", "description", "ticket_type", "severity", "assigned_department", "related_asset", "related_document"]})
+            ticket = create_ticket(
+                actor=request.user,
+                **{
+                    key: form.cleaned_data[key]
+                    for key in [
+                        "title",
+                        "description",
+                        "ticket_type",
+                        "severity",
+                        "assigned_department",
+                        "related_asset",
+                        "related_document",
+                    ]
+                },
+            )
             if form.cleaned_data.get("attachment"):
-                add_attachment(ticket=ticket, actor=request.user, uploaded_file=form.cleaned_data["attachment"])
+                add_attachment(
+                    ticket=ticket,
+                    actor=request.user,
+                    uploaded_file=form.cleaned_data["attachment"],
+                )
             messages.success(request, f"{ticket.ticket_number} created.")
             return redirect("shit:detail", ticket_number=ticket.ticket_number)
     else:
@@ -53,33 +166,144 @@ def ticket_create(request):
 
 @login_required
 def ticket_detail(request, ticket_number):
-    ticket = get_object_or_404(Ticket.objects.select_related("requester", "assigned_department", "assigned_user", "related_asset"), ticket_number=ticket_number)
+    ticket = get_object_or_404(
+        Ticket.objects.select_related(*TICKET_SELECT_RELATED),
+        ticket_number=ticket_number,
+    )
     if not can_view_ticket(request.user, ticket):
         return HttpResponseForbidden("You do not have access to this ticket.")
     manage = can_manage_ticket(request.user, ticket)
     comments = ticket.comments.select_related("author")
     if not manage:
         comments = comments.filter(visibility=TicketComment.Visibility.PUBLIC)
-    return render(request, "shit/ticket_detail.html", {
-        "ticket": ticket, "can_manage": manage, "comments": comments,
-        "events": ticket.events.select_related("actor")[:200] if manage else [],
-        "attachments": ticket.attachments.select_related("uploaded_by")[:100],
-        "comment_form": TicketCommentForm(), "attachment_form": TicketAttachmentForm(),
-        "manage_form": TicketManageForm(initial={"status": ticket.status, "severity": ticket.severity, "assigned_department": ticket.assigned_department, "assigned_user": ticket.assigned_user, "related_asset": ticket.related_asset, "related_document": ticket.related_document}) if manage else None,
-    })
+    return render(
+        request,
+        "shit/ticket_detail.html",
+        {
+            "ticket": ticket,
+            "can_manage": manage,
+            "comments": comments,
+            "events": ticket.events.select_related("actor")[:200] if manage else [],
+            "attachments": ticket.attachments.select_related("uploaded_by")[:100],
+            "comment_form": TicketCommentForm(),
+            "attachment_form": TicketAttachmentForm(),
+            "manage_form": (
+                TicketManageForm(
+                    initial={
+                        "status": ticket.status,
+                        "severity": ticket.severity,
+                        "assigned_department": ticket.assigned_department,
+                        "assigned_user": ticket.assigned_user,
+                        "related_asset": ticket.related_asset,
+                        "related_document": ticket.related_document,
+                    }
+                )
+                if manage
+                else None
+            ),
+        },
+    )
 
 
 @login_required
 def ticket_manage(request, ticket_number):
     ticket = get_object_or_404(Ticket, ticket_number=ticket_number)
     if not can_manage_ticket(request.user, ticket):
-        return HttpResponseForbidden("You do not have permission to manage this ticket.")
+        return HttpResponseForbidden(
+            "You do not have permission to manage this ticket."
+        )
     if request.method == "POST":
         form = TicketManageForm(request.POST)
         if form.is_valid():
             update_ticket(ticket=ticket, actor=request.user, **form.cleaned_data)
             messages.success(request, "Ticket updated.")
     return redirect("shit:detail", ticket_number=ticket.ticket_number)
+
+
+@login_required
+@require_POST
+def ticket_board_move(request, ticket_number):
+    ticket = get_object_or_404(
+        Ticket.objects.select_related(
+            "assigned_department",
+            "assigned_user",
+            "related_asset",
+        ),
+        ticket_number=ticket_number,
+    )
+    if not can_manage_ticket(request.user, ticket):
+        if _is_ajax(request):
+            return JsonResponse(
+                {"ok": False, "error": "You may not manage this ticket."},
+                status=403,
+            )
+        return HttpResponseForbidden(
+            "You do not have permission to manage this ticket."
+        )
+
+    form = TicketBoardMoveForm(request.POST)
+    if not form.is_valid():
+        if _is_ajax(request):
+            return JsonResponse(
+                {"ok": False, "errors": form.errors.get_json_data()},
+                status=400,
+            )
+        messages.error(request, "The requested board move was invalid.")
+        return redirect("shit:list")
+
+    target_status = form.cleaned_data["status"]
+    before_ticket_number = form.cleaned_data["before_ticket_number"].strip().upper()
+
+    # A client may only name a queue neighbor it can already see, and that
+    # neighbor must actually belong to the target status. The service then
+    # performs the authoritative transaction and ordering update.
+    if before_ticket_number:
+        neighbor = _visible_tickets(request.user).filter(
+            ticket_number=before_ticket_number
+        ).first()
+        if neighbor is None or neighbor.status != target_status:
+            if _is_ajax(request):
+                return JsonResponse(
+                    {"ok": False, "error": "Invalid queue neighbor."},
+                    status=400,
+                )
+            messages.error(request, "That queue position is no longer available.")
+            return redirect("shit:list")
+
+    try:
+        moved_ticket = move_ticket_on_board(
+            ticket=ticket,
+            actor=request.user,
+            target_status=target_status,
+            before_ticket_number=before_ticket_number,
+            reorder=form.cleaned_data["reorder"],
+            direction=form.cleaned_data["direction"],
+        )
+    except ValueError as exc:
+        if _is_ajax(request):
+            return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+        messages.error(request, str(exc))
+        return redirect("shit:list")
+
+    if _is_ajax(request):
+        return JsonResponse(
+            {
+                "ok": True,
+                "ticket_number": moved_ticket.ticket_number,
+                "status": moved_ticket.status,
+                "status_display": moved_ticket.get_status_display(),
+                "queue_position": moved_ticket.queue_position,
+            }
+        )
+
+    params = {
+        "view": "board",
+        "scope": form.cleaned_data.get("scope") or "mine",
+    }
+    if form.cleaned_data.get("query"):
+        params["q"] = form.cleaned_data["query"]
+    messages.success(request, f"{moved_ticket.ticket_number} updated.")
+    return redirect(f"{reverse('shit:list')}?{urlencode(params)}")
 
 
 @login_required
@@ -91,9 +315,19 @@ def ticket_comment(request, ticket_number):
         form = TicketCommentForm(request.POST)
         if form.is_valid():
             visibility = form.cleaned_data["visibility"]
-            if visibility == TicketComment.Visibility.INTERNAL and not can_manage_ticket(request.user, ticket):
-                return HttpResponseForbidden("Only ticket agents may add internal notes.")
-            add_comment(ticket=ticket, actor=request.user, body=form.cleaned_data["body"], visibility=visibility)
+            if visibility == TicketComment.Visibility.INTERNAL and not can_manage_ticket(
+                request.user,
+                ticket,
+            ):
+                return HttpResponseForbidden(
+                    "Only ticket agents may add internal notes."
+                )
+            add_comment(
+                ticket=ticket,
+                actor=request.user,
+                body=form.cleaned_data["body"],
+                visibility=visibility,
+            )
     return redirect("shit:detail", ticket_number=ticket.ticket_number)
 
 
@@ -105,5 +339,9 @@ def ticket_attachment(request, ticket_number):
     if request.method == "POST":
         form = TicketAttachmentForm(request.POST, request.FILES)
         if form.is_valid():
-            add_attachment(ticket=ticket, actor=request.user, uploaded_file=form.cleaned_data["file"])
+            add_attachment(
+                ticket=ticket,
+                actor=request.user,
+                uploaded_file=form.cleaned_data["file"],
+            )
     return redirect("shit:detail", ticket_number=ticket.ticket_number)
