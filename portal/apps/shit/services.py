@@ -11,6 +11,7 @@ from .models import Ticket, TicketAttachment, TicketComment, TicketEvent
 
 TICKET_SUFFIX_BYTES = 3
 TICKET_NUMBER_MAX_ATTEMPTS = 32
+QUEUE_POSITION_STEP = 10
 
 
 def _event(ticket, actor, event_type, summary, metadata=None):
@@ -29,7 +30,6 @@ def _generate_ticket_number():
 
     Format:
         SHIT-YY-HHHHHH
-
     HHHHHH is a six-character uppercase hexadecimal suffix. The complete
     ticket number remains protected by Ticket.ticket_number's UNIQUE
     constraint; generation does not rely on probability alone for uniqueness.
@@ -52,14 +52,12 @@ def create_ticket(
 ):
     """
     Create a ticket with an immutable, automatically-generated ticket number.
-
     A database uniqueness collision is retried with a new random suffix. The
     nested atomic block creates a savepoint so an IntegrityError does not poison
     the outer transaction.
     """
     for _ in range(TICKET_NUMBER_MAX_ATTEMPTS):
         ticket_number = _generate_ticket_number()
-
         try:
             with transaction.atomic():
                 ticket = Ticket.objects.create(
@@ -73,7 +71,6 @@ def create_ticket(
                     related_asset=related_asset,
                     related_document=(related_document or "").strip().upper(),
                 )
-
                 _event(
                     ticket,
                     actor,
@@ -99,7 +96,6 @@ def create_ticket(
             # because form/service validation resolves required relationships
             # before creation. If all attempts fail, surface a clear error.
             continue
-
     raise RuntimeError(
         "Unable to allocate a unique SHIT ticket number after "
         f"{TICKET_NUMBER_MAX_ATTEMPTS} attempts."
@@ -129,7 +125,6 @@ def update_ticket(
         "asset": ticket.related_asset.asset_id if ticket.related_asset else None,
         "document": ticket.related_document,
     }
-
     with transaction.atomic():
         ticket.status = status
         ticket.severity = severity
@@ -137,7 +132,6 @@ def update_ticket(
         ticket.assigned_user = assigned_user
         ticket.related_asset = related_asset
         ticket.related_document = (related_document or "").strip().upper()
-
         now = timezone.now()
         if status == Ticket.Status.RESOLVED and not ticket.resolved_at:
             ticket.resolved_at = now
@@ -150,7 +144,6 @@ def update_ticket(
             ticket.closed_at = None
 
         ticket.save()
-
         after = {
             "status": ticket.status,
             "severity": ticket.severity,
@@ -163,7 +156,6 @@ def update_ticket(
             "asset": ticket.related_asset.asset_id if ticket.related_asset else None,
             "document": ticket.related_document,
         }
-
         event_map = [
             ("status", TicketEvent.EventType.STATUS_CHANGED, "Status"),
             ("severity", TicketEvent.EventType.SEVERITY_CHANGED, "Severity"),
@@ -172,7 +164,6 @@ def update_ticket(
             ("asset", TicketEvent.EventType.ASSET_LINKED, "Related asset"),
             ("document", TicketEvent.EventType.DOCUMENT_LINKED, "Related document"),
         ]
-
         for key, event_type, label in event_map:
             if before[key] != after[key]:
                 _event(
@@ -185,6 +176,136 @@ def update_ticket(
                 )
 
     return ticket
+
+
+def move_ticket_on_board(
+    *,
+    ticket,
+    actor,
+    target_status,
+    before_ticket_number="",
+    reorder=False,
+    direction="",
+):
+    """
+    Move one Ticket through the operational board.
+
+    Status changes deliberately go through update_ticket() so resolved/closed
+    timestamps and TicketEvent audit behavior stay identical to the normal
+    management form. Queue ordering is independent from severity.
+
+    Numeric queue positions are normalized only inside the target status. That
+    keeps the stored data simple and avoids client-controlled coordinates.
+    """
+    if target_status not in Ticket.Status.values:
+        raise ValueError("Unknown ticket status.")
+    if direction not in {"", "up", "down", "top", "bottom"}:
+        raise ValueError("Unknown queue movement.")
+
+    before_ticket_number = (before_ticket_number or "").strip().upper()
+
+    with transaction.atomic():
+        locked_ticket = (
+            Ticket.objects.select_for_update()
+            .select_related(
+                "assigned_department",
+                "assigned_user",
+                "related_asset",
+            )
+            .get(pk=ticket.pk)
+        )
+        source_status = locked_ticket.status
+        source_position = locked_ticket.queue_position
+        status_changed = source_status != target_status
+
+        if status_changed:
+            update_ticket(
+                ticket=locked_ticket,
+                actor=actor,
+                status=target_status,
+                severity=locked_ticket.severity,
+                assigned_department=locked_ticket.assigned_department,
+                assigned_user=locked_ticket.assigned_user,
+                related_asset=locked_ticket.related_asset,
+                related_document=locked_ticket.related_document,
+            )
+
+        should_reorder = bool(reorder or direction or status_changed)
+        if not should_reorder:
+            return locked_ticket
+
+        ordered = list(
+            Ticket.objects.select_for_update()
+            .filter(status=target_status)
+            .order_by("queue_position", "-created_at", "ticket_number")
+        )
+        before_order = [item.pk for item in ordered]
+        current_index = next(
+            index for index, item in enumerate(ordered) if item.pk == locked_ticket.pk
+        )
+        without_ticket = [item for item in ordered if item.pk != locked_ticket.pk]
+
+        if reorder:
+            if before_ticket_number:
+                insert_index = next(
+                    (
+                        index
+                        for index, item in enumerate(without_ticket)
+                        if item.ticket_number == before_ticket_number
+                    ),
+                    None,
+                )
+                if insert_index is None:
+                    raise ValueError(
+                        "The requested queue neighbor is not in the target status."
+                    )
+            else:
+                insert_index = len(without_ticket)
+        elif direction == "up":
+            insert_index = max(0, current_index - 1)
+        elif direction == "down":
+            insert_index = min(len(without_ticket), current_index + 1)
+        elif direction == "top":
+            insert_index = 0
+        elif direction == "bottom":
+            insert_index = len(without_ticket)
+        else:
+            # A non-drag status change from the accessible form appends the
+            # ticket to the target queue rather than guessing a visual position.
+            insert_index = len(without_ticket)
+
+        without_ticket.insert(insert_index, locked_ticket)
+        after_order = [item.pk for item in without_ticket]
+
+        changed = []
+        for index, item in enumerate(without_ticket, start=1):
+            desired_position = index * QUEUE_POSITION_STEP
+            if item.queue_position != desired_position:
+                item.queue_position = desired_position
+                changed.append(item)
+
+        if changed:
+            Ticket.objects.bulk_update(changed, ["queue_position"])
+
+        if status_changed or before_order != after_order:
+            _event(
+                locked_ticket,
+                actor,
+                TicketEvent.EventType.QUEUE_REORDERED,
+                (
+                    f"Board queue moved from {source_status} to {target_status}."
+                    if status_changed
+                    else f"Board queue reordered within {target_status}."
+                ),
+                {
+                    "from_status": source_status,
+                    "to_status": target_status,
+                    "from_queue_position": source_position,
+                    "to_queue_position": locked_ticket.queue_position,
+                },
+            )
+
+        return locked_ticket
 
 
 def add_comment(
@@ -230,7 +351,6 @@ def add_attachment(*, ticket, actor, uploaded_file):
         or mimetypes.guess_type(uploaded_file.name)[0]
         or ""
     )
-
     attachment = TicketAttachment.objects.create(
         ticket=ticket,
         uploaded_by=actor,
