@@ -6,7 +6,13 @@ from datetime import date
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .models import Ticket, TicketAttachment, TicketComment, TicketEvent
+from .models import (
+    Ticket,
+    TicketAssetLink,
+    TicketAttachment,
+    TicketComment,
+    TicketEvent,
+)
 
 
 TICKET_SUFFIX_BYTES = 3
@@ -39,6 +45,149 @@ def _generate_ticket_number():
     return f"SHIT-{year:02d}-{suffix}"
 
 
+def add_ticket_asset_link(
+    *,
+    ticket,
+    actor,
+    asset,
+    relationship_type=TicketAssetLink.RelationshipType.RELATED,
+    note="",
+):
+    """
+    Link a BAM asset to a SHIT ticket without changing BAM custody/allocation.
+
+    A TicketAssetLink represents operational context only. Reservation,
+    checkout, and custody semantics intentionally belong to the future BAM
+    allocation subsystem rather than being inferred from this relationship.
+    """
+    if relationship_type not in TicketAssetLink.RelationshipType.values:
+        raise ValueError("Unknown asset relationship type.")
+
+    note = (note or "").strip()
+    with transaction.atomic():
+        locked_ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)
+        link, created = TicketAssetLink.objects.get_or_create(
+            ticket=locked_ticket,
+            asset=asset,
+            defaults={
+                "relationship_type": relationship_type,
+                "note": note,
+                "created_by": actor,
+            },
+        )
+        if not created:
+            raise ValueError(f"{asset.asset_id} is already linked to this ticket.")
+
+        _event(
+            locked_ticket,
+            actor,
+            TicketEvent.EventType.ASSET_LINKED,
+            (
+                f"Asset {asset.asset_id} linked as "
+                f"{link.get_relationship_type_display()}."
+            ),
+            {
+                "asset_id": asset.asset_id,
+                "relationship_type": link.relationship_type,
+                "note": link.note,
+            },
+        )
+        return link
+
+
+def update_ticket_asset_link(
+    *,
+    ticket,
+    link,
+    actor,
+    relationship_type,
+    note="",
+):
+    if relationship_type not in TicketAssetLink.RelationshipType.values:
+        raise ValueError("Unknown asset relationship type.")
+    if link.ticket_id != ticket.pk:
+        raise ValueError("Asset relationship does not belong to this ticket.")
+
+    note = (note or "").strip()
+    with transaction.atomic():
+        locked_link = (
+            TicketAssetLink.objects.select_for_update()
+            .select_related("asset", "ticket")
+            .get(pk=link.pk, ticket=ticket)
+        )
+        before = {
+            "relationship_type": locked_link.relationship_type,
+            "note": locked_link.note,
+        }
+        after = {
+            "relationship_type": relationship_type,
+            "note": note,
+        }
+        if before == after:
+            return locked_link
+
+        locked_link.relationship_type = relationship_type
+        locked_link.note = note
+        locked_link.save(update_fields=["relationship_type", "note", "updated_at"])
+
+        _event(
+            ticket,
+            actor,
+            TicketEvent.EventType.ASSET_RELATIONSHIP_CHANGED,
+            (
+                f"Asset relationship for {locked_link.asset.asset_id} changed "
+                f"to {locked_link.get_relationship_type_display()}."
+            ),
+            {
+                "asset_id": locked_link.asset.asset_id,
+                "from": before,
+                "to": after,
+            },
+        )
+        return locked_link
+
+
+def remove_ticket_asset_link(*, ticket, link, actor):
+    if link.ticket_id != ticket.pk:
+        raise ValueError("Asset relationship does not belong to this ticket.")
+
+    with transaction.atomic():
+        locked_link = (
+            TicketAssetLink.objects.select_for_update()
+            .select_related("asset")
+            .get(pk=link.pk, ticket=ticket)
+        )
+        metadata = {
+            "asset_id": locked_link.asset.asset_id,
+            "relationship_type": locked_link.relationship_type,
+            "note": locked_link.note,
+        }
+        asset_id = locked_link.asset.asset_id
+        relationship_display = locked_link.get_relationship_type_display()
+        locked_link.delete()
+        _event(
+            ticket,
+            actor,
+            TicketEvent.EventType.ASSET_UNLINKED,
+            f"Asset {asset_id} unlinked ({relationship_display}).",
+            metadata,
+        )
+
+
+def _link_initial_assets(*, ticket, actor, assets, relationship_type):
+    seen = set()
+    for asset in assets or []:
+        if asset.pk in seen:
+            continue
+        seen.add(asset.pk)
+        add_ticket_asset_link(
+            ticket=ticket,
+            actor=actor,
+            asset=asset,
+            relationship_type=relationship_type,
+        )
+
+
 def create_ticket(
     *,
     actor,
@@ -47,15 +196,26 @@ def create_ticket(
     ticket_type,
     severity,
     assigned_department=None,
-    related_asset=None,
+    related_assets=None,
+    asset_relationship=TicketAssetLink.RelationshipType.RELATED,
     related_document="",
+    # Transitional compatibility for code that still calls the old service
+    # with one related_asset. New code should use related_assets.
+    related_asset=None,
 ):
     """
     Create a ticket with an immutable, automatically-generated ticket number.
+
     A database uniqueness collision is retried with a new random suffix. The
-    nested atomic block creates a savepoint so an IntegrityError does not poison
-    the outer transaction.
+    legacy Ticket.related_asset FK is intentionally not written for new tickets;
+    all new asset relationships are stored through TicketAssetLink.
     """
+    initial_assets = list(related_assets or [])
+    if related_asset is not None and all(
+        asset.pk != related_asset.pk for asset in initial_assets
+    ):
+        initial_assets.append(related_asset)
+
     for _ in range(TICKET_NUMBER_MAX_ATTEMPTS):
         ticket_number = _generate_ticket_number()
         try:
@@ -68,7 +228,6 @@ def create_ticket(
                     severity=severity,
                     requester=actor,
                     assigned_department=assigned_department,
-                    related_asset=related_asset,
                     related_document=(related_document or "").strip().upper(),
                 )
                 _event(
@@ -87,14 +246,16 @@ def create_ticket(
                         ),
                     },
                 )
+                _link_initial_assets(
+                    ticket=ticket,
+                    actor=actor,
+                    assets=initial_assets,
+                    relationship_type=asset_relationship,
+                )
                 return ticket
         except IntegrityError:
             # ticket_number is UNIQUE. A generated collision is harmless:
             # consume neither identifier nor ticket and retry with a new suffix.
-            #
-            # Other integrity errors should be extraordinarily unlikely here
-            # because form/service validation resolves required relationships
-            # before creation. If all attempts fail, surface a clear error.
             continue
     raise RuntimeError(
         "Unable to allocate a unique SHIT ticket number after "
@@ -110,7 +271,6 @@ def update_ticket(
     severity,
     assigned_department,
     assigned_user,
-    related_asset,
     related_document,
 ):
     before = {
@@ -122,7 +282,6 @@ def update_ticket(
             else None
         ),
         "assignee": str(ticket.assigned_user_id) if ticket.assigned_user_id else None,
-        "asset": ticket.related_asset.asset_id if ticket.related_asset else None,
         "document": ticket.related_document,
     }
     with transaction.atomic():
@@ -130,7 +289,6 @@ def update_ticket(
         ticket.severity = severity
         ticket.assigned_department = assigned_department
         ticket.assigned_user = assigned_user
-        ticket.related_asset = related_asset
         ticket.related_document = (related_document or "").strip().upper()
         now = timezone.now()
         if status == Ticket.Status.RESOLVED and not ticket.resolved_at:
@@ -153,7 +311,6 @@ def update_ticket(
                 else None
             ),
             "assignee": str(ticket.assigned_user_id) if ticket.assigned_user_id else None,
-            "asset": ticket.related_asset.asset_id if ticket.related_asset else None,
             "document": ticket.related_document,
         }
         event_map = [
@@ -161,7 +318,6 @@ def update_ticket(
             ("severity", TicketEvent.EventType.SEVERITY_CHANGED, "Severity"),
             ("department", TicketEvent.EventType.DEPARTMENT_CHANGED, "Department"),
             ("assignee", TicketEvent.EventType.ASSIGNEE_CHANGED, "Assignee"),
-            ("asset", TicketEvent.EventType.ASSET_LINKED, "Related asset"),
             ("document", TicketEvent.EventType.DOCUMENT_LINKED, "Related document"),
         ]
         for key, event_type, label in event_map:
@@ -210,7 +366,6 @@ def move_ticket_on_board(
             .select_related(
                 "assigned_department",
                 "assigned_user",
-                "related_asset",
             )
             .get(pk=ticket.pk)
         )
@@ -226,7 +381,6 @@ def move_ticket_on_board(
                 severity=locked_ticket.severity,
                 assigned_department=locked_ticket.assigned_department,
                 assigned_user=locked_ticket.assigned_user,
-                related_asset=locked_ticket.related_asset,
                 related_document=locked_ticket.related_document,
             )
 
