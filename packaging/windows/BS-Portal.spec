@@ -1,17 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import os
 import sys
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 root = Path(SPECPATH).parents[1]
 portal = root / "portal"
+
+# PyInstaller's built-in Django hook defaults to ``config.settings`` when a
+# project uses a settings package.  BSP has split settings modules, so force
+# the desktop profile during analysis as well as at runtime.  The hook runs
+# Django in an isolated child process and inherits this environment variable.
+os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings.desktop"
 sys.path.insert(0, str(portal))
 staticfiles = root / ".desktop_staticfiles"
 
 hiddenimports = [
     "pystray._win32",
+    "config.settings.desktop",
+    "config.urls",
+    "config.wsgi",
 ]
 for package in (
     "apps.core.management.commands",
