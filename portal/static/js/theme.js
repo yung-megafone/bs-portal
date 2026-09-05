@@ -1,7 +1,6 @@
 (() => {
     "use strict";
 
-    const STORAGE_KEY = "bs-portal-theme";
     const DEFAULT_THEME = "bs-blue";
     const ALLOWED_THEMES = new Set(["bs-blue", "bs-red"]);
 
@@ -14,8 +13,13 @@
     }
 
     function persistTheme(theme) {
+        if (window.BSPortalPreferences) {
+            window.BSPortalPreferences.set("theme", theme);
+            return;
+        }
+
         try {
-            localStorage.setItem(STORAGE_KEY, theme);
+            localStorage.setItem("bs-portal-theme", theme);
         } catch (error) {
             // Persistence is optional. Theme switching still works for this page.
         }
@@ -53,7 +57,9 @@
     }
 
     function initializeThemeControls() {
-        syncThemeControls(currentTheme());
+        const theme = currentTheme();
+        syncThemeControls(theme);
+        persistTheme(theme);
 
         document.querySelectorAll("[data-theme-option]").forEach((button) => {
             button.addEventListener("click", () => {
