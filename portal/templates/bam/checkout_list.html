@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Active Checkouts — BAM{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/bam.css' %}">{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">BAM · PHYSICAL CUSTODY</p>
+    <div class="hero-row">
+        <div>
+            <h1>Active Checkouts</h1>
+            <p>Reservation-backed physical custody. Reservations and waitlists remain in the asset request queue.</p>
+        </div>
+        <div class="bam-actions">
+            <a class="bam-secondary-button" href="{% url 'bam:request_list' %}">Asset requests</a>
+            <a class="bam-secondary-button" href="{% url 'bam:list' %}">Asset register</a>
+        </div>
+    </div>
+</section>
+
+{% if overdue_count %}
+<div class="card bam-overdue-banner"><strong>{{ overdue_count }} overdue checkout{{ overdue_count|pluralize }}</strong><span>Due date is taken from the approved BAM request window.</span></div>
+{% endif %}
+
+<nav class="bam-request-tabs" aria-label="Checkout scope">
+    <a class="{% if scope == 'my' %}active{% endif %}" href="{% url 'bam:checkout_list' %}?scope=my">My checkouts</a>
+    {% if can_manage_any %}<a class="{% if scope == 'managed' %}active{% endif %}" href="{% url 'bam:checkout_list' %}?scope=managed">Managed checkouts</a>{% endif %}
+</nav>
+
+<section class="card table-card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Asset</th><th>Custodian</th><th>Request</th><th>Checked out</th><th>Due</th><th>Department</th><th>State</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+            {% for row in checkouts %}
+                <tr class="{% if row.is_overdue %}bam-overdue-row{% endif %}">
+                    <td class="mono"><a href="{% url 'bam:detail' row.asset.asset_id %}">{{ row.asset.asset_id }}</a></td>
+                    <td>{{ row.custodian }}</td>
+                    <td class="mono"><a href="{% url 'bam:request_detail' row.request_item.request.request_number %}">{{ row.request_item.request.request_number }}</a></td>
+                    <td>{{ row.checked_out_at }}</td>
+                    <td>{{ row.due_date }}</td>
+                    <td>{{ row.asset.department.code }}</td>
+                    <td>{% if row.is_overdue %}<span class="bam-overdue">OVERDUE · {{ row.overdue_days }}d</span>{% else %}<span class="request-status checked_out">In custody</span>{% endif %}</td>
+                    <td>
+                    {% if row.custodian_id == user.id %}
+                        <details class="bam-self-release">
+                            <summary>Release</summary>
+                            <form method="post" action="{% url 'bam:checkout_self_release' row.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{% url 'bam:checkout_list' %}?scope=my">
+                                <label>Condition
+                                    <select name="condition">{% for value,label in return_condition_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+                                </label>
+                                <label>Notes<input type="text" name="notes" maxlength="240" placeholder="Optional condition/accessory notes"></label>
+                                <button type="submit">Release asset</button>
+                            </form>
+                        </details>
+                    {% else %}<span class="muted">—</span>{% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8" class="muted">No active checkouts in this view.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
