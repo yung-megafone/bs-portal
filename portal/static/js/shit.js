@@ -1,6 +1,31 @@
 (function () {
     "use strict";
 
+    function getPreference(name, fallback = null) {
+        if (window.BSPortalPreferences) {
+            return window.BSPortalPreferences.get(name, fallback);
+        }
+        return fallback;
+    }
+
+    function setPreference(name, value) {
+        if (window.BSPortalPreferences) {
+            window.BSPortalPreferences.set(name, value);
+        }
+    }
+
+    function initTicketWorkspacePreference() {
+        const workspace = document.querySelector("[data-shit-workspace]");
+        if (!workspace) {
+            return;
+        }
+
+        const viewMode = workspace.dataset.viewMode;
+        if (viewMode === "board" || viewMode === "list") {
+            setPreference("shit-view", viewMode);
+        }
+    }
+
     function initAssetPickers() {
         document.querySelectorAll("[data-asset-picker]").forEach((picker) => {
             const filter = picker.querySelector("[data-asset-filter]");
@@ -13,24 +38,43 @@
             const originalOptions = Array.from(select.options).map((option) => ({
                 value: option.value,
                 text: option.textContent,
-                selected: option.selected,
             }));
+
+            function currentSelection() {
+                return new Set(
+                    Array.from(select.selectedOptions)
+                        .map((option) => option.value)
+                        .filter(Boolean)
+                );
+            }
 
             function updateContext() {
                 if (!context) {
                     return;
                 }
-                const selected = select.options[select.selectedIndex];
-                if (selected && selected.value) {
-                    context.textContent = selected.textContent;
-                } else if (!context.textContent.trim()) {
-                    context.textContent = "No BAM asset selected.";
+                const selected = Array.from(select.selectedOptions).filter(
+                    (option) => option.value
+                );
+                if (!selected.length) {
+                    context.textContent = select.multiple
+                        ? "No BAM assets selected."
+                        : "No BAM asset selected.";
+                    return;
                 }
+                if (select.multiple) {
+                    if (selected.length === 1) {
+                        context.textContent = selected[0].textContent;
+                    } else {
+                        context.textContent = `${selected.length} BAM assets selected.`;
+                    }
+                    return;
+                }
+                context.textContent = selected[0].textContent;
             }
 
             function applyFilter() {
                 const query = filter.value.trim().toLowerCase();
-                const selectedValue = select.value;
+                const selectedValues = currentSelection();
                 select.replaceChildren();
 
                 originalOptions.forEach((item) => {
@@ -38,10 +82,10 @@
                         !item.value
                         || !query
                         || item.text.toLowerCase().includes(query)
-                        || item.value === selectedValue
+                        || selectedValues.has(item.value)
                     ) {
                         const option = new Option(item.text, item.value);
-                        option.selected = item.value === selectedValue;
+                        option.selected = selectedValues.has(item.value);
                         select.add(option);
                     }
                 });
@@ -245,7 +289,11 @@
         const buttons = Array.from(header.querySelectorAll("[data-detail-density]"));
         const sections = Array.from(detail.querySelectorAll("[data-detail-section]"));
         const compactQuery = window.matchMedia("(max-width: 1180px)");
-        let manualChoice = false;
+        const savedFromMarkup = header.dataset.savedDensity;
+        const savedFromBrowser = getPreference("shit-detail-density", savedFromMarkup || null);
+        let savedDensity = savedFromBrowser === "dense" || savedFromBrowser === "compact"
+            ? savedFromBrowser
+            : null;
 
         function applyDensity(mode, preserveDisclosureState) {
             const density = mode === "compact" ? "compact" : "dense";
@@ -272,13 +320,17 @@
 
         buttons.forEach((button) => {
             button.addEventListener("click", () => {
-                manualChoice = true;
-                applyDensity(button.dataset.detailDensity, false);
+                savedDensity = button.dataset.detailDensity === "compact"
+                    ? "compact"
+                    : "dense";
+                setPreference("shit-detail-density", savedDensity);
+                applyDensity(savedDensity, false);
             });
         });
 
         function applyResponsiveDefault() {
-            if (manualChoice) {
+            if (savedDensity) {
+                applyDensity(savedDensity, true);
                 return;
             }
             applyDensity(compactQuery.matches ? "compact" : "dense", false);
@@ -293,6 +345,7 @@
         applyResponsiveDefault();
     }
 
+    initTicketWorkspacePreference();
     initAssetPickers();
     initBoard();
     initTicketDetailDensity();
