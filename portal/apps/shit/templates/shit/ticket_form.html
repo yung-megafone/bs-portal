@@ -76,20 +76,27 @@
             <section class="card shit-panel">
                 <div class="shit-panel-heading">
                     <div>
-                        <p class="eyebrow">BAM LINK</p>
+                        <p class="eyebrow">BAM RELATIONSHIPS</p>
                         <h2>Asset context</h2>
                     </div>
-                    <span class="muted">Uses the existing BAM record; no asset data is copied into SHIT.</span>
+                    <span class="muted">References existing BAM records; custody and checkout remain separate.</span>
                 </div>
                 <div class="shit-asset-picker" data-asset-picker>
-                    <label for="asset-search-create">Find asset</label>
+                    <label for="asset-search-create">Find assets</label>
                     <input id="asset-search-create" type="search" data-asset-filter placeholder="Filter by asset ID, hardware, department, status, custodian..." autocomplete="off">
                     <div class="field shit-field">
-                        {{ form.related_asset.label_tag }}
-                        {{ form.related_asset }}
-                        {% for error in form.related_asset.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                        {{ form.related_assets.label_tag }}
+                        {{ form.related_assets }}
+                        {% if form.related_assets.help_text %}<small class="muted">{{ form.related_assets.help_text }}</small>{% endif %}
+                        {% for error in form.related_assets.errors %}<span class="error">{{ error }}</span>{% endfor %}
                     </div>
-                    <small class="muted" data-asset-context>Selecting an asset links this ticket to BAM. Location is not duplicated because the current BAM Asset model does not expose a dedicated location field.</small>
+                    <div class="field shit-field shit-asset-relationship-field">
+                        {{ form.asset_relationship.label_tag }}
+                        {{ form.asset_relationship }}
+                        <small class="muted">The selected relationship is applied to all assets chosen at creation. Each link can be changed independently from the ticket detail page.</small>
+                        {% for error in form.asset_relationship.errors %}<span class="error">{{ error }}</span>{% endfor %}
+                    </div>
+                    <small class="muted" data-asset-context>No BAM assets selected. Linking an asset does not reserve, check out, or transfer custody of it.</small>
                 </div>
             </section>
         </main>
