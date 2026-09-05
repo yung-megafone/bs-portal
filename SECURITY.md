@@ -148,6 +148,13 @@ Contributions should follow these rules:
 - add focused tests for permission boundaries and security-sensitive behavior;
 - document assumptions when a security decision is not obvious.
 
+
+## Packaged Windows desktop build
+
+The optional Windows package is a localhost-only convenience deployment, not a new public-network security boundary. It runs the web application on `127.0.0.1:8765` and provisions a private MySQL service on `127.0.0.1:33069`; neither service is intended to listen on a LAN/WAN interface. Runtime secrets are not stored as plaintext: application credentials use Windows DPAPI LocalMachine protection, and the MySQL root recovery secret is additionally kept in an Administrator/SYSTEM-only file. LocalMachine DPAPI should still be treated as protection at rest rather than isolation from a sufficiently privileged local Windows user.
+
+The installer takes a SQL backup before applying the versioned migration set and preserves ProgramData database/media/backups on uninstall. The packaged build should remain unsigned until a real code-signing certificate is configured; unsigned alpha binaries may trigger Windows SmartScreen/Defender reputation warnings. Code signing is strongly recommended before broader distribution.
+
 ## Planned hardening
 
 Major security work still planned or incomplete includes:
