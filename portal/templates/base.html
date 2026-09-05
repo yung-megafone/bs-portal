@@ -83,6 +83,7 @@
                     <span class="account-section-label">Administration</span>
                     <a href="/admin/">Django admin</a>
                     <a href="/admin/bam/bamautomationsettings/1/change/">BAM automation</a>
+                    {% if user.is_superuser %}<a href="{% url 'data_management' %}">Backup &amp; restore</a>{% endif %}
                 </div>
                 {% endif %}
                 <div class="account-section account-links">
