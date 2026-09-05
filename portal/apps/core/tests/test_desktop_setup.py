@@ -38,3 +38,31 @@ class DesktopInitialSetupTests(TestCase):
     def test_setup_rejects_non_loopback_client(self):
         response = self.client.get(reverse("desktop_setup"), REMOTE_ADDR="10.0.0.10")
         self.assertEqual(response.status_code, 403)
+
+    @override_settings(DESKTOP_MODE=True)
+    def test_first_run_can_restore_existing_portal_backup(self):
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import patch
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        upload = SimpleUploadedFile("dev.bsbackup", b"portable")
+        with tempfile.TemporaryDirectory() as temp_name:
+            safety = Path(temp_name) / "safety.bsbackup"
+            with patch(
+                "apps.core.views.restore_portable_backup",
+                return_value=(safety, {"portal_version": "0.2.0-alpha"}),
+            ) as restore:
+                response = self.client.post(
+                    reverse("desktop_setup"),
+                    {
+                        "action": "restore",
+                        "restore-confirmation": "RESTORE",
+                        "restore-backup": upload,
+                    },
+                    REMOTE_ADDR="127.0.0.1",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Restore complete")
+        restore.assert_called_once()
