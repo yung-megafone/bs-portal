@@ -3,7 +3,19 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
 
-from apps.core.views import about, dashboard, desktop_setup, health, license_info, privacy, security
+from apps.core.views import (
+    about,
+    dashboard,
+    data_management,
+    desktop_setup,
+    download_saved_backup,
+    export_portal_backup,
+    health,
+    import_portal_backup,
+    license_info,
+    privacy,
+    security,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -14,6 +26,10 @@ urlpatterns = [
     path("privacy/", privacy, name="privacy"),
     path("security/", security, name="security"),
     path("license/", license_info, name="license"),
+    path("data/", data_management, name="data_management"),
+    path("data/backup/export/", export_portal_backup, name="export_portal_backup"),
+    path("data/backup/import/", import_portal_backup, name="import_portal_backup"),
+    path("data/backup/saved/<str:filename>/", download_saved_backup, name="download_saved_backup"),
     path("departments/", include("apps.departments.urls")),
     path("bam/", include("apps.bam.urls")),
     path("shit/", include("apps.shit.urls")),
