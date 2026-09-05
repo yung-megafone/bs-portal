@@ -52,3 +52,6 @@ data/
 release/
 packaging/windows/vendor/*.zip
 packaging/windows/vendor/*.exe
+
+# Portable BSP backups
+*.bsbackup
