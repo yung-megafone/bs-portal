@@ -36,3 +36,7 @@ The current guide includes alpha screenshots for:
 ## Documentation status
 
 B.S. Portal is alpha software. Screenshots and workflows in the operator guide describe the current alpha interface and should be updated alongside material UI or workflow changes. Privacy- or security-impacting changes should likewise be reflected in `PRIVACY.md` or `SECURITY.md` as part of the same change.
+
+## Packaged releases
+
+- [`../packaging/windows/README.md`](../packaging/windows/README.md) — single-EXE Windows installer/runtime packaging, private MySQL bootstrap, upgrades, backups, and build instructions.
