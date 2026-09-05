@@ -134,4 +134,9 @@ def configure_environment(config: dict | None = None) -> dict:
     os.environ.setdefault("BAM_MEDIA_ROOT", str(data_dir / "media"))
     os.environ.setdefault("BS_PORTAL_BUILD_ID", str(config.get("build_id", "")).strip())
 
+    mysql = config.get("mysql", {})
+    mysql_bin_dir = str(mysql.get("bin_dir", "")).strip()
+    if mysql_bin_dir:
+        os.environ["MYSQL_BIN_DIR"] = mysql_bin_dir
+
     return config
