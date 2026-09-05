@@ -104,3 +104,16 @@ python portal/manage.py import_portal_backup C:\path\backup.bsbackup --yes-reall
 ## Code signing
 
 The current alpha build scripts do not fabricate or embed a signing certificate. An unsigned PyInstaller/Inno Setup release can receive SmartScreen/Defender reputation warnings, especially when newly published. Before wider distribution, sign both `BS-Portal.exe` and the final Setup EXE with a trusted Windows code-signing certificate and timestamp the signatures.
+
+## PyInstaller Django settings preflight
+
+B.S. Portal uses a Django **settings package** (`config.settings.desktop`) rather than a single `config/settings.py`. PyInstaller's built-in Django hook otherwise defaults to `config.settings`, which is only the package initializer and does not contain `ROOT_URLCONF`.
+
+The release build now explicitly exports `DJANGO_SETTINGS_MODULE=config.settings.desktop`, repeats that setting inside `BS-Portal.spec` for the isolated hook process, and runs a Django preflight before PyInstaller. A successful build should print:
+
+```text
+Desktop settings OK: config.settings.desktop
+```
+
+If an older tree fails with `AttributeError: 'Settings' object has no attribute 'ROOT_URLCONF'`, apply the current packaging files and rebuild; do not add a duplicate `config/settings.py` or flatten the settings package.
+
