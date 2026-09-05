@@ -6,10 +6,15 @@ B.S. Portal is an actively developed Django modular monolith for internal busine
 
 The portal is beyond the original foundation-only stage: identity, departments, BAM asset management, SHIT ticketing, and Timeclock workflows are implemented and usable. It remains **alpha software** while authorization, audit enforcement, backup/restore, security hardening, and additional operational modules are still being developed and reviewed.
 
+The current application release is **v0.1.0-alpha**. Human-facing release metadata is defined in `portal/apps/core/version.py` so the UI and tests use one version source of truth.
+
 ## Documentation
 
 - [B.S. Portal Operator Guide](docs/user-guide.md) — illustrated day-to-day use of Dashboard, Departments, BAM, SHIT, Timeclock, and the current admin/back-office view.
-- [Documentation index](docs/README.md) — operator, development, architecture, and ADR documentation.
+- [Documentation index](docs/README.md) — operator, development, architecture, ADR, privacy, and security documentation.
+- [Privacy Policy](PRIVACY.md) — privacy-first design principles, data handling, retention, and self-hosting considerations.
+- [Security Policy](SECURITY.md) — alpha security posture, reporting guidance, deployment baseline, and planned hardening.
+- In-app information pages — `/about/`, `/privacy/`, `/security/`, and `/license/` expose the current version, credits, policies, and MIT license without requiring authentication.
 
 ## Current modules
 
@@ -216,23 +221,33 @@ Major work still planned or incomplete includes:
 
 The current alpha designation should remain until these foundations are sufficiently stable for broader operational testing and the security model has been reviewed as a system rather than only module-by-module.
 
-## Security
+## Security and privacy
 
-Treat the current codebase as alpha software.
+Treat the current codebase as alpha software. The project intentionally favors first-party, self-hosted operational data and does not require advertising, analytics, location tracking, biometrics, or device fingerprinting to operate.
 
-- do not commit `.env`, passwords, API keys, database credentials, or Django secret keys
-- do not expose a `DEBUG=True` instance to the public internet
-- keep staging isolated and use synthetic/disposable data
-- do not assume current application authorization is the final production RBAC model
-- review migrations and backup procedures before applying them to valuable data
+At minimum:
 
-See [`SECURITY.md`](SECURITY.md) for the current security policy and planned hardening work.
+- do not commit `.env`, passwords, API keys, database credentials, or Django secret keys;
+- do not expose a `DEBUG=True` instance to the public internet;
+- keep internet-reachable staging isolated and use synthetic/disposable data;
+- do not assume current application authorization is the final production RBAC model;
+- review migrations and verified backups before applying schema changes to valuable data;
+- protect media, logs, and backups as sensitive operational data.
+
+See [`SECURITY.md`](SECURITY.md) for the security policy and [`PRIVACY.md`](PRIVACY.md) for the privacy-first data-handling posture.
 
 ## Staging deployment
 
 The current staging target is `dev.bssply.co` using cPanel / Passenger.
 
 See [`docs/development/cpanel-staging.md`](docs/development/cpanel-staging.md).
+
+
+## License
+
+B.S. Portal is released under the [MIT License](LICENSE).
+
+The MIT license is intentionally permissive: reuse, modification, redistribution, and commercial use are allowed, provided the copyright and license notice are preserved. This provides the attribution/notice requirement wanted for the project without introducing a custom software license or restricting downstream use in ways that would make the project non-open-source.
 
 ## Development rules
 
