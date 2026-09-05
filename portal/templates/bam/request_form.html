@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Request Asset — BAM{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/bam.css' %}">{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">BAM · ASSET REQUEST</p>
+    <div class="hero-row">
+        <div>
+            <h1>Request equipment</h1>
+            <p>Reserve access to a BAM resource for a defined project window.</p>
+        </div>
+        <a class="bam-secondary-button" href="{% url 'bam:request_list' %}">Asset requests</a>
+    </div>
+</section>
+
+{% if source_asset %}
+<section class="card">
+    <div class="section-heading"><h2>Requested from asset record</h2><a class="mono" href="{% url 'bam:detail' source_asset.asset_id %}">{{ source_asset.asset_id }}</a></div>
+    <p><strong>{{ source_asset.manufacturer }} {{ source_asset.model }}</strong> · {{ source_asset.asset_type.name }} · {{ source_asset.status.name }}</p>
+    <p class="muted">The asset is preselected as your preference. Choose whether equivalents are acceptable or whether BAM should queue specifically for this unit.</p>
+</section>
+{% endif %}
+
+<section class="bam-form-note">
+    This creates a BAM allocation request, <strong>not</strong> a SHIT ticket. When BAM automation is enabled, an eligible same-day request may be approved and checked out immediately; unavailable equipment enters the queue. Future approved windows remain reservations until they become eligible for checkout.
+</section>
+
+<form method="post" class="bam-request-form-layout" novalidate>
+    {% csrf_token %}
+    <section class="card bam-form-section">
+        <h2>Work context</h2>
+        {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+            {% if field.name == 'purpose' or field.name == 'related_ticket' or field.name == 'priority' or field.name == 'requested_start' or field.name == 'requested_end' or field.name == 'desired_completion_date' or field.name == 'justification' %}
+            <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </section>
+
+    <section class="card bam-form-section">
+        <h2>First requirement</h2>
+        {% for field in form %}
+            {% if field.name == 'department' or field.name == 'asset_type' or field.name == 'preference_mode' or field.name == 'preferred_asset' or field.name == 'item_note' %}
+            <div class="field">
+                <label{% if field.id_for_label %} for="{{ field.id_for_label }}"{% endif %}>{{ field.label }}</label>
+                {% if field.name == 'preference_mode' %}<div class="bam-radio-list">{{ field }}</div>{% else %}{{ field }}{% endif %}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        <button type="submit">Submit asset request</button>
+        <small class="muted">Additional asset requirements can be added to the request after it is created.</small>
+    </section>
+</form>
+{% endblock %}
