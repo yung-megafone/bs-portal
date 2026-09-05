@@ -1113,3 +1113,140 @@
         gap: 0.3rem;
     }
 }
+
+/* Chunk 2: typed multi-asset ticket relationships */
+.shit-asset-picker select[multiple] {
+    min-height: 170px;
+    padding: 0.35rem;
+}
+
+.shit-asset-picker select[multiple] option {
+    padding: 0.35rem 0.4rem;
+    border-radius: 3px;
+}
+
+.shit-asset-relationship-field {
+    max-width: 420px;
+}
+
+.shit-asset-link-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.shit-asset-link-card {
+    min-width: 0;
+    padding: 0.7rem;
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    background: var(--bs-field);
+}
+
+.shit-asset-link-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding-bottom: 0.55rem;
+    margin-bottom: 0.55rem;
+    border-bottom: 1px solid var(--bs-border-soft);
+}
+
+.shit-asset-link-heading > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.shit-asset-link-heading .shit-asset-id {
+    margin-bottom: 0;
+    overflow-wrap: anywhere;
+}
+
+.shit-asset-link-heading > small {
+    color: var(--bs-text-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.shit-relationship-pill {
+    border-color: var(--bs-primary-border);
+    background: var(--bs-primary-soft);
+    color: var(--bs-primary-hover);
+    font-size: 0.62rem;
+}
+
+.shit-asset-link-facts {
+    margin-bottom: 0;
+}
+
+.shit-asset-link-editor {
+    margin-top: 0.65rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--bs-border-soft);
+}
+
+.shit-asset-link-editor > summary {
+    cursor: pointer;
+    color: var(--bs-primary);
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.shit-asset-link-editor > form:first-of-type {
+    margin-top: 0.65rem;
+}
+
+.shit-unlink-form {
+    margin-top: 0.45rem;
+}
+
+.shit-unlink-form button {
+    width: 100%;
+    border-color: var(--bs-border-strong);
+    background: transparent;
+    color: var(--bs-text-muted);
+}
+
+.shit-unlink-form button:hover {
+    color: var(--bs-text);
+    border-color: var(--bs-text-muted);
+}
+
+.shit-add-asset-link {
+    margin-top: 0.8rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bs-border);
+}
+
+.shit-add-asset-link > .eyebrow {
+    margin: 0 0 0.45rem;
+    font-size: 0.6rem;
+}
+
+.shit-list-assets {
+    min-width: 145px;
+}
+
+.shit-list-assets a {
+    font-size: 0.72rem;
+}
+
+@media (max-width: 560px) {
+    .shit-asset-link-heading {
+        flex-direction: column;
+    }
+
+    .shit-asset-link-heading > small {
+        text-align: left;
+    }
+}
+
+/* Chunk 3: BAM allocation cross-references */
+.shit-asset-link-actions { margin-top:.55rem; font-size:.82rem; }
+.shit-linked-asset-requests { display:grid; gap:.55rem; padding-top:.8rem; border-top:1px solid var(--bs-border-soft); }
+.shit-asset-request-summary { display:grid; gap:.2rem; padding:.6rem .7rem; border:1px solid var(--bs-border-soft); border-radius:.4rem; background:var(--bs-field); }
+.shit-asset-request-summary > div { display:flex; justify-content:space-between; gap:.7rem; align-items:center; }
+.shit-asset-request-summary small { color:var(--bs-text-muted); }
