@@ -79,11 +79,22 @@ class Ticket(models.Model):
         null=True,
         blank=True,
     )
+    # Legacy single-asset compatibility field. Existing values are migrated into
+    # TicketAssetLink by migration 0004; new SHIT workflows use related_assets.
+    # Keep this field during the alpha transition so existing data/schema is not
+    # destructively rewritten in the same release that introduces multi-asset
+    # relationships.
     related_asset = models.ForeignKey(
         "bam.Asset",
         on_delete=models.PROTECT,
-        related_name="tickets",
+        related_name="legacy_tickets",
         null=True,
+        blank=True,
+    )
+    related_assets = models.ManyToManyField(
+        "bam.Asset",
+        through="TicketAssetLink",
+        related_name="shit_tickets",
         blank=True,
     )
     related_document = models.CharField(
@@ -111,6 +122,62 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"{self.ticket_number} — {self.title}"
+
+
+class TicketAssetLink(models.Model):
+    class RelationshipType(models.TextChoices):
+        RELATED = "RELATED", "Related"
+        AFFECTED = "AFFECTED", "Affected asset"
+        REQUIRED = "REQUIRED", "Required for work"
+        TEST_EQUIPMENT = "TEST_EQUIPMENT", "Test equipment"
+        REPLACEMENT = "REPLACEMENT", "Replacement / alternate"
+        SUPPORTING = "SUPPORTING", "Supporting resource"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.PROTECT,
+        related_name="asset_links",
+    )
+    asset = models.ForeignKey(
+        "bam.Asset",
+        on_delete=models.PROTECT,
+        related_name="ticket_links",
+    )
+    relationship_type = models.CharField(
+        max_length=24,
+        choices=RelationshipType.choices,
+        default=RelationshipType.RELATED,
+    )
+    note = models.CharField(max_length=240, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="ticket_asset_links_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ticket", "asset"],
+                name="unique_ticket_asset_link",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["asset", "relationship_type"],
+                name="shit_tal_asset_rel_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.ticket.ticket_number} → {self.asset.asset_id} "
+            f"({self.get_relationship_type_display()})"
+        )
 
 
 class TicketComment(models.Model):
@@ -175,6 +242,11 @@ class TicketEvent(models.Model):
         DEPARTMENT_CHANGED = "DEPARTMENT_CHANGED", "Department changed"
         ASSIGNEE_CHANGED = "ASSIGNEE_CHANGED", "Assignee changed"
         ASSET_LINKED = "ASSET_LINKED", "Asset linked"
+        ASSET_UNLINKED = "ASSET_UNLINKED", "Asset unlinked"
+        ASSET_RELATIONSHIP_CHANGED = (
+            "ASSET_RELATIONSHIP_CHANGED",
+            "Asset relationship changed",
+        )
         DOCUMENT_LINKED = "DOCUMENT_LINKED", "Document linked"
         QUEUE_REORDERED = "QUEUE_REORDERED", "Queue reordered"
 
