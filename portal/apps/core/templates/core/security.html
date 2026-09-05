@@ -29,6 +29,9 @@
             <li>State-changing workflows enforce authorization on the server rather than trusting client controls.</li>
             <li>SHIT separates ticket visibility from ticket-management authority.</li>
             <li>Board status and queue-order mutations are server-authorized and validated.</li>
+            <li>BAM requesters can submit their own resource needs, while reservation operations are restricted to staff/superusers or manager/admin members of the relevant owning department.</li>
+            <li>Reservation conflicts are checked server-side inside transactions; browser availability displays are not authoritative.</li>
+            <li>BAM reservations do not silently rewrite physical custody.</li>
             <li>Domain histories improve accountability but are not yet a tamper-proof centralized audit ledger.</li>
         </ul>
     </section>
