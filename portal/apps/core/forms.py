@@ -29,3 +29,36 @@ class DesktopInitialAdminForm(forms.Form):
             except ValidationError as exc:
                 self.add_error("password1", exc)
         return cleaned
+
+
+class PortalBackupExportForm(forms.Form):
+    include_media = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Include uploaded files",
+        help_text="Recommended for portable restores. Includes BAM evidence and SHIT attachments stored under the media directory.",
+    )
+
+
+class PortalBackupImportForm(forms.Form):
+    backup = forms.FileField(
+        label="B.S. Portal backup",
+        help_text="Select a .bsbackup file exported by B.S. Portal.",
+    )
+    confirmation = forms.CharField(
+        max_length=16,
+        label="Type RESTORE to continue",
+        help_text="The current database will be safety-backed up and then replaced.",
+    )
+
+    def clean_backup(self):
+        upload = self.cleaned_data["backup"]
+        if not upload.name.lower().endswith(".bsbackup"):
+            raise forms.ValidationError("Select a B.S. Portal .bsbackup file.")
+        return upload
+
+    def clean_confirmation(self):
+        value = self.cleaned_data["confirmation"].strip()
+        if value != "RESTORE":
+            raise forms.ValidationError("Type RESTORE exactly to confirm the replacement operation.")
+        return value
