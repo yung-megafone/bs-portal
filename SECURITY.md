@@ -58,13 +58,18 @@ These controls are a baseline, not a complete production configuration.
 - module-level authorization is enforced in server-side views/services rather than trusted to client-side controls;
 - SHIT separates ticket visibility from ticket-management permission;
 - board status/order mutations are server-authorized and validated;
+- BAM asset requests separate requester access from reservation authority; requesters may submit their own needs, while reservation operations are restricted to staff/superusers or manager/admin members of the relevant owning department;
+- whole-request BAM actions spanning multiple departments require authority across every involved department, while individual reservation actions remain department-scoped;
+- reservation conflicts are validated server-side inside transactions rather than trusting browser availability displays;
+- reservation-backed checkout, return, and direct-handoff actions are department-authorized on the server and are not inferred from client-side state;
+- active physical checkouts block new allocation even after their original reservation window has expired, preventing an overdue asset from being promised to another request before it is returned or handed off;
 - administrative Django access should remain limited to explicitly trusted staff.
 
 The authorization model is still under active review. A formal production authorization matrix and adversarial permission tests remain planned work.
 
 ### Operational history
 
-BAM, SHIT, and Timeclock maintain domain-specific event/history records. Timeclock corrections preserve the original punch and append corrections instead of silently rewriting history.
+BAM, SHIT, and Timeclock maintain domain-specific event/history records. BAM asset requests record reservation/waitlist actions separately from physical custody; reserving an asset does not silently rewrite `current_custodian`. A reservation-backed checkout explicitly creates checkout history and a custody transition, while return/direct-handoff actions close or transfer that custody with corresponding events. Timeclock corrections preserve the original punch and append corrections instead of silently rewriting history.
 
 These histories improve accountability but should **not yet be described as a tamper-proof audit ledger**. Database-level append-only enforcement and centralized audit policy remain planned hardening items.
 
@@ -165,3 +170,7 @@ Major security work still planned or incomplete includes:
 ## No security warranty
 
 The project is distributed under the license in [`LICENSE`](LICENSE) and is provided without warranty. Alpha status should be treated as a real operational constraint, not merely a version label.
+
+### BAM automation controls
+
+BAM automatic approval and custody transfer are policy-controlled and can be disabled independently by administrators. Automatic allocation still evaluates reservation conflicts, asset lifecycle state, allocation holds, per-asset automation opt-out, requested preference mode, and stock custody before acting. Explicit manager selection remains a separate manual override path. Automatic actions are recorded in BAM audit/event history with an automation marker and a configured audit actor.
