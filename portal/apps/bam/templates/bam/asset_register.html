@@ -7,11 +7,7 @@
   <p>Create an authoritative B.S. asset record.</p>
 </section>
 
-{% if messages %}
-  {% for message in messages %}
-    <div class="notice notice-{{ message.tags }}">{{ message }}</div>
-  {% endfor %}
-{% endif %}
+
 
 <form method="post" class="panel form-grid">
   {% csrf_token %}
