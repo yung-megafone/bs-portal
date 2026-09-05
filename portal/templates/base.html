@@ -1,4 +1,5 @@
-{% load static %}
+{% load static portal_meta %}
+{% portal_version as bsp_version %}
 <!doctype html>
 <html lang="en" data-theme="bs-blue">
 <head>
@@ -64,9 +65,18 @@
                     </button>
                 </div>
 
+                <div class="account-section account-links">
+                    <span class="account-section-label">B.S. Portal</span>
+                    <a href="{% url 'about' %}">About B.S. Portal · v{{ bsp_version }}</a>
+                    <a href="{% url 'privacy' %}">Privacy</a>
+                    <a href="{% url 'security' %}">Security</a>
+                    <a href="{% url 'license' %}">License</a>
+                </div>
+
                 {% if user.is_staff %}
                 <div class="account-section account-links">
-                    <a href="/admin/">Admin</a>
+                    <span class="account-section-label">Administration</span>
+                    <a href="/admin/">Django admin</a>
                 </div>
                 {% endif %}
                 <div class="account-section account-links">
@@ -84,7 +94,7 @@
 <main class="container">
     {% block content %}{% endblock %}
 </main>
-<footer class="footer">B.S. Supply Co. internal operations platform — alpha environment</footer>
+<footer class="footer">B.S. Supply Co. internal operations platform — alpha environment · v{{ bsp_version }} · <a href="{% url 'about' %}">About</a> · <a href="{% url 'privacy' %}">Privacy</a> · <a href="{% url 'security' %}">Security</a></footer>
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>
