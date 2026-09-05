@@ -1,24 +1,28 @@
-# Domain Model — Alpha
+# Domain Model — v0.2.0-alpha
 
-The current portal is a modular monolith. Cross-domain relationships are explicit records rather than duplicated data.
+The current portal is a modular monolith. Cross-domain relationships are explicit records rather than duplicated authoritative data.
 
 ```text
 User
  ├── DepartmentMembership → Department
  ├── requests / is assigned → Ticket
- ├── custodian → Asset
+ ├── requests → AssetRequest
+ ├── custodian → Asset / AssetCheckout
+ ├── employee → Punch
  └── actor → domain event/history records
 
 Department
  ├── Asset
  ├── Ticket
+ ├── AssetRequestItem
  └── DepartmentMembership
 
 Ticket
  ├── TicketComment
  ├── TicketAttachment
  ├── TicketEvent
- └── TicketAssetLink → Asset
+ ├── TicketAssetLink → Asset
+ └── AssetRequest.related_ticket ← AssetRequest
 
 Asset
  ├── AssetType
@@ -27,34 +31,58 @@ Asset
  ├── AssetRelationship
  ├── AssetEvidence
  ├── AssetEvent
- └── TicketAssetLink → Ticket
+ ├── TicketAssetLink → Ticket
+ ├── preferred/allocated ← AssetRequestItem
+ └── AssetCheckout
+
+AssetRequest (BAMR)
+ ├── requester → User
+ ├── optional related_ticket → Ticket
+ ├── AssetRequestItem[]
+ └── AssetRequestEvent[]
+
+AssetRequestItem
+ ├── requested Department + AssetType
+ ├── optional preferred_asset → Asset
+ ├── optional allocated_asset → Asset
+ └── one-to-one optional AssetCheckout
+
+AssetCheckout
+ ├── request_item
+ ├── asset
+ ├── custodian
+ ├── issuer/returner
+ └── optional handoff_to → AssetCheckout
+
+Punch
+ ├── employee / recorded_by
+ ├── PunchCorrection[]
+ └── TimeclockEvent[]
 ```
 
 ## Ticket ↔ asset relationships
 
-A SHIT ticket can reference multiple BAM assets through `TicketAssetLink`.
+`TicketAssetLink` allows multiple BAM assets per ticket. Relationship type and ticket-specific note live in SHIT; the Asset remains BAM-authoritative.
 
-Each link carries an operational relationship type such as **Affected asset**, **Required for work**, **Test equipment**, **Replacement / alternate**, or **Supporting resource**. BAM remains authoritative for the asset itself; SHIT stores only the relationship and optional ticket-specific context.
+The legacy `Ticket.related_asset` FK remains temporarily during alpha compatibility. New workflows use `TicketAssetLink`.
 
-The legacy single `Ticket.related_asset` foreign key remains temporarily during the alpha migration path. Migration `0004_ticket_asset_links` copies every existing legacy relationship into `TicketAssetLink`. New application workflows use the through-model rather than writing new legacy FK values.
+> Ticket↔asset relationship is not allocation. Allocation is a BAMR/AssetRequestItem workflow.
 
-> A ticket↔asset relationship is not a reservation, checkout, or custody transfer. Allocation is a separate BAM workflow and must not be inferred from a SHIT reference.
+## Reservation vs checkout vs custody
 
-## Future direction
+- `AssetRequestItem.allocated_asset` + `ALLOCATED` means reservation.
+- `AssetCheckout` means physical issuance.
+- `Asset.current_custodian` is current responsibility/holding.
+- `AssetCustody` preserves the custody timeline.
 
-Planned domains can extend this model without changing the core ownership boundaries:
+Keeping these separate allows future reservations while another user still holds the asset today.
 
-```text
-AssetIntake
- ├── Attachment
- ├── ComplianceAssessment
- └── creates → Asset
+## BAM automation configuration
 
-PSOPDocument
- └── references authoritative Git repository object
+`BAMAutomationSettings` is a singleton (`pk=1`) controlling stock custodian/automation actor and auto-approval/transfer/promotion policies.
 
-AssetRequest / Allocation
- ├── requests one or more → Asset / AssetPool
- ├── may reference → Ticket
- └── drives reservation / checkout workflows without becoming a SHIT ticket
-```
+Automation does not create a second state model; it calls the same service operations with automated event metadata.
+
+## Binary media
+
+BAM `AssetEvidence.file` and SHIT `TicketAttachment.file` are filesystem/object-storage references. Portable backup optionally transports MEDIA_ROOT with the DB.
