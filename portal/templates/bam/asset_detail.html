@@ -1,11 +1,44 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ asset.asset_id }} — BAM{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/bam.css' %}">{% endblock %}
 {% block content %}
 <section class="hero compact-hero">
     <p class="eyebrow">BAM · ASSET RECORD</p>
-    <h1 class="asset-title">{{ asset.asset_id }}</h1>
-    <p>{{ asset.manufacturer }} {{ asset.model }}</p>
+    <div class="hero-row">
+        <div>
+            <h1 class="asset-title">{{ asset.asset_id }}</h1>
+            <p>{{ asset.manufacturer }} {{ asset.model }}</p>
+        </div>
+        <div class="bam-actions">
+            <a class="bam-secondary-button" href="{% url 'bam:checkout_list' %}">Active checkouts</a>
+            <a class="bam-secondary-button" href="{% url 'bam:request_list' %}">Asset requests</a>
+            {% if not asset.status.is_terminal %}<a class="button" href="{% url 'bam:request_asset' asset.asset_id %}">Request this asset</a>{% else %}<span class="bam-secondary-button" aria-disabled="true">Terminal asset</span>{% endif %}
+        </div>
+    </div>
 </section>
+
+{% if asset.allocation_hold %}
+<div class="card bam-allocation-hold"><strong>ALLOCATION HOLD</strong><span>{{ asset.allocation_hold_reason|default:"Manual hold" }}</span></div>
+{% elif not asset.automatic_allocation_enabled %}
+<div class="card bam-automation-note"><strong>Automatic allocation disabled</strong><span>Managers may still allocate this asset manually.</span></div>
+{% endif %}
+
+{% if can_self_release %}
+<section class="card bam-self-release-card">
+    <div class="section-heading"><h2>Release this asset</h2><span class="muted">Current custodian action</span></div>
+    <p>Release the asset back to BAM. Good-condition assets may automatically pass to the next active request; other conditions place the asset on hold.</p>
+    <form method="post" action="{% url 'bam:checkout_self_release' current_checkout.id %}" class="bam-self-release-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'bam:detail' asset.asset_id %}">
+        <label>Asset condition
+            <select name="condition">{% for value,label in return_condition_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label>Release notes<input type="text" name="notes" maxlength="240" placeholder="Optional condition/accessory notes"></label>
+        <button type="submit">Release asset</button>
+    </form>
+</section>
+{% endif %}
 
 <div class="grid detail-grid">
     <section class="card">
@@ -36,14 +69,76 @@
         </form>
     </section>
     <section class="card">
-        <h2>Assign Custody</h2>
+        <h2>Manual Custody Override</h2>
+        <p class="muted">Administrative custody adjustment. Reservation checkouts should normally be issued from the BAM request workflow.</p>
         <form method="post" action="{% url 'bam:custody' asset.asset_id %}" class="stack-form">
             {% csrf_token %}
             {{ custody_form.as_p }}
-            <button type="submit">Assign custody</button>
+            <button type="submit">Update custody</button>
         </form>
     </section>
 </div>
+
+<section class="card">
+    <div class="section-heading"><h2>Availability, checkout & request queue</h2>{% if not asset.status.is_terminal %}<a href="{% url 'bam:request_asset' asset.asset_id %}">Request this asset</a>{% endif %}</div>
+    {% if current_checkout %}
+    <div class="bam-current-checkout {% if current_checkout.is_overdue %}overdue{% endif %}">
+        <div><small>Current checkout</small><strong>{{ current_checkout.custodian }}</strong></div>
+        <div><small>Supporting request</small><a class="mono" href="{% url 'bam:request_detail' current_checkout.request_item.request.request_number %}">{{ current_checkout.request_item.request.request_number }}</a></div>
+        <div><small>Checked out</small><strong>{{ current_checkout.checked_out_at }}</strong></div>
+        <div><small>Due</small><strong>{{ current_checkout.due_date }}</strong></div>
+        {% if current_checkout.is_overdue %}<span class="bam-overdue">OVERDUE · {{ current_checkout.overdue_days }} day{{ current_checkout.overdue_days|pluralize }}</span>{% else %}<span class="request-status checked_out">In custody</span>{% endif %}
+    </div>
+    {% elif restricted_current_checkout %}
+    <p class="bam-privacy-count">This asset is currently checked out, but the associated request/custodian details are restricted.</p>
+    {% else %}
+    <p class="muted">Not currently checked out through a BAM reservation.</p>
+    {% endif %}
+    {% if active_reservations %}
+    <h3>Reserved windows</h3>
+    <div class="bam-reservation-strip">
+        {% for item in active_reservations %}
+        <div class="bam-reservation-row">
+            <a class="mono" href="{% url 'bam:request_detail' item.request.request_number %}">{{ item.request.request_number }}</a>
+            <span>{{ item.request.requested_start }} → {{ item.request.requested_end }}</span>
+            <span>{{ item.request.purpose }}</span>
+            <small>{{ item.get_status_display }} · {{ item.request.requester }}</small>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}<p class="muted">No reservation details visible to you.</p>{% endif %}
+    {% if hidden_reservation_count %}<p class="bam-privacy-count">{{ hidden_reservation_count }} additional reservation window{{ hidden_reservation_count|pluralize }} exist but request details are restricted.</p>{% endif %}
+
+    {% if specific_waitlist %}
+    <h3>Exact-asset waitlist</h3>
+    <div class="bam-reservation-strip">
+        {% for item in specific_waitlist %}
+        <div class="bam-reservation-row">
+            <a class="mono" href="{% url 'bam:request_detail' item.request.request_number %}">{{ item.request.request_number }}</a>
+            <span>{{ item.request.requested_start }} → {{ item.request.requested_end }}</span>
+            <span>{{ item.request.purpose }}</span>
+            <small>Queue #{{ item.waitlist_position_value|default:'?' }} · {{ item.request.requester }}</small>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if hidden_waitlist_count %}<p class="bam-privacy-count">{{ hidden_waitlist_count }} additional exact-asset waitlist entr{{ hidden_waitlist_count|pluralize:"y,ies" }} are restricted.</p>{% endif %}
+</section>
+
+<section class="card">
+    <div class="section-heading"><h2>SHIT References</h2><span class="muted">Visible tickets only</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Relationship</th><th>Severity</th><th>Status</th><th>Title</th></tr></thead><tbody>
+    {% for link in ticket_links %}
+        <tr>
+            <td class="mono"><a href="{% url 'shit:detail' link.ticket.ticket_number %}">{{ link.ticket.ticket_number }}</a></td>
+            <td>{{ link.get_relationship_type_display }}</td>
+            <td><span class="sev sev-{{ link.ticket.severity|lower }}">{{ link.ticket.get_severity_display }}</span></td>
+            <td>{{ link.ticket.get_status_display }}</td>
+            <td>{{ link.ticket.title }}</td>
+        </tr>
+    {% empty %}<tr><td colspan="5" class="muted">No visible SHIT tickets reference this asset.</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
 
 <section class="card">
     <h2>Evidence</h2>
@@ -65,9 +160,26 @@
 </section>
 
 <section class="card">
+    <div class="section-heading"><h2>Checkout History</h2><a href="{% url 'bam:checkout_list' %}">Active checkouts</a></div>
+    <div class="table-wrap"><table><thead><tr><th>Request</th><th>Custodian</th><th>Checked out</th><th>Due</th><th>Returned</th><th>Issued by</th></tr></thead><tbody>
+    {% for row in checkout_history %}
+        <tr class="{% if row.is_overdue %}bam-overdue-row{% endif %}">
+            <td class="mono"><a href="{% url 'bam:request_detail' row.request_item.request.request_number %}">{{ row.request_item.request.request_number }}</a></td>
+            <td>{{ row.custodian }}</td>
+            <td>{{ row.checked_out_at }}</td>
+            <td>{{ row.due_date }}{% if row.is_overdue %} <span class="bam-overdue">OVERDUE</span>{% endif %}</td>
+            <td>{{ row.returned_at|default:"Active" }}</td>
+            <td>{{ row.issued_by }}</td>
+        </tr>
+    {% empty %}<tr><td colspan="6" class="muted">No reservation-backed checkout details are visible to you.</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% if hidden_checkout_count %}<p class="bam-privacy-count">{{ hidden_checkout_count }} additional checkout record{{ hidden_checkout_count|pluralize }} exist but details are restricted.</p>{% endif %}
+</section>
+
+<section class="card">
     <h2>Custody History</h2>
     <div class="table-wrap"><table><thead><tr><th>Custodian</th><th>Assigned</th><th>Returned</th><th>By</th><th>Reason</th></tr></thead><tbody>
-    {% for row in custody %}<tr><td>{{ row.custodian }}</td><td>{{ row.assigned_at }}</td><td>{{ row.returned_at|default:"Current" }}</td><td>{{ row.assigned_by }}</td><td>{{ row.reason }}</td></tr>
+    {% for row in custody %}<tr><td>{{ row.custodian }}</td><td>{{ row.assigned_at }}</td><td>{{ row.returned_at|default:"Current" }}</td><td>{{ row.assigned_by }}</td><td>{{ row.display_reason }}</td></tr>
     {% empty %}<tr><td colspan="5">No custody records.</td></tr>{% endfor %}
     </tbody></table></div>
 </section>
@@ -76,7 +188,7 @@
     <h2>Asset History</h2>
     <div class="timeline">
     {% for event in events %}
-        <article><time>{{ event.occurred_at }}</time><strong>{{ event.get_event_type_display }}</strong><span>{{ event.summary }}</span><small>{{ event.actor }}</small></article>
+        <article><time>{{ event.occurred_at }}</time><strong>{{ event.get_event_type_display }}</strong><span>{{ event.display_summary }}</span><small>{{ event.actor }}</small></article>
     {% empty %}<p>No events.</p>{% endfor %}
     </div>
 </section>
