@@ -36,6 +36,7 @@ class DashboardTests(TestCase):
         self.assertContains(response, 'id="account-menu"')
         self.assertContains(response, 'data-theme-option="bs-blue"')
         self.assertContains(response, 'data-theme-option="bs-red"')
+        self.assertContains(response, "js/preferences.js")
         self.assertContains(response, "js/theme.js")
         self.assertNotContains(response, 'id="portal-theme"')
 
