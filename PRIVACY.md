@@ -172,3 +172,9 @@ For a deployed instance, privacy questions should be directed to the organizatio
 ### BAM allocation and release data
 
 The BAM allocation workflow stores requester identity, requested dates, asset preferences, reservation/check-out state, custody history, release condition, and optional release notes because those fields are required to operate and audit the equipment pool. Toast notifications are rendered from first-party Django message state and do not add third-party tracking or analytics.
+
+## Portable backups
+
+A `.bsbackup` export can contain most or all records stored by B.S. Portal and, when **Include uploaded files** is enabled, the associated BAM evidence, SHIT attachments, and other files under the configured media directory. These archives are intended for self-hosted backup, recovery, and migration between BSP installations.
+
+BSP does not intentionally place database passwords, Django secret keys, Windows DPAPI material, MySQL root recovery credentials, application logs, or installer runtime configuration into portable backups. Nevertheless, the operational records inside a backup may be sensitive. Operators should store, transmit, retain, and delete backup archives with protections appropriate to the underlying records.
