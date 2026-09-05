@@ -75,7 +75,6 @@ class TicketServiceTests(TestCase):
             severity=ticket.severity,
             assigned_department=self.department,
             assigned_user=None,
-            related_asset=None,
             related_document="",
         )
 

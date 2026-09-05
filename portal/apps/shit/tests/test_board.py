@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.core.browser_preferences import cookie_name
 from apps.departments.models import Department, DepartmentMembership
 from apps.identity.models import User
 from apps.shit.models import Ticket, TicketEvent
@@ -40,6 +41,59 @@ class TicketBoardTests(TestCase):
             severity=Ticket.Severity.SEV3,
             assigned_department=self.department,
         )
+
+    def test_board_is_default_view_without_saved_preference(self):
+        ticket = self._ticket("Default board")
+        self.client.force_login(self.agent)
+
+        response = self.client.get(reverse("shit:list"), {"scope": "department"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["view_mode"], "board")
+        self.assertContains(response, 'data-shit-board')
+        self.assertContains(response, ticket.ticket_number)
+
+    def test_explicit_list_view_is_remembered_by_browser_cookie(self):
+        self._ticket("Remember list")
+        self.client.force_login(self.agent)
+
+        first = self.client.get(
+            reverse("shit:list"),
+            {"view": "list", "scope": "department"},
+        )
+
+        self.assertEqual(first.context["view_mode"], "list")
+        self.assertEqual(
+            first.cookies[cookie_name("shit-view")].value,
+            "list",
+        )
+
+        second = self.client.get(reverse("shit:list"), {"scope": "department"})
+        self.assertEqual(second.context["view_mode"], "list")
+        self.assertNotContains(second, 'data-shit-board')
+
+    def test_invalid_saved_view_falls_back_to_board(self):
+        self._ticket("Invalid preference")
+        self.client.force_login(self.agent)
+        self.client.cookies[cookie_name("shit-view")] = "surprise"
+
+        response = self.client.get(reverse("shit:list"), {"scope": "department"})
+
+        self.assertEqual(response.context["view_mode"], "board")
+
+    def test_ticket_detail_exposes_saved_density_preference(self):
+        ticket = self._ticket("Compact detail")
+        self.client.force_login(self.agent)
+        self.client.cookies[cookie_name("shit-detail-density")] = "compact"
+
+        response = self.client.get(
+            reverse("shit:detail", args=[ticket.ticket_number])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["detail_density_preference"], "compact")
+        self.assertContains(response, 'data-density="compact"')
+        self.assertContains(response, 'data-saved-density="compact"')
 
     def test_board_renders_existing_ticket_records(self):
         ticket = self._ticket("Visible on board")
