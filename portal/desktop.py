@@ -8,10 +8,8 @@ modes are used by the installer for backups, migrations, and health checks.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import logging
 import os
-from pathlib import Path
 import socket
 import subprocess
 import sys
@@ -118,48 +116,12 @@ def setup_django(config: dict) -> None:
 
 
 def backup_database(config: dict) -> Path:
-    database = config["database"]
-    mysql = config["mysql"]
-    bin_dir = Path(str(mysql["bin_dir"]))
-    mysqldump = bin_dir / "mysqldump.exe"
-    if not mysqldump.exists():
-        raise RuntimeConfigurationError(f"mysqldump.exe was not found at {mysqldump}")
+    # Installer-oriented backup: database only. User-initiated portable exports
+    # default to including uploaded media, but release migrations do not mutate
+    # MEDIA_ROOT and therefore do not need to duplicate potentially large files.
+    from apps.core.database_backups import create_portable_backup
 
-    backup_dir = default_data_dir() / "backups"
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    destination = backup_dir / f"bsportal-{datetime.now():%Y%m%d-%H%M%S}.sql"
-
-    env = os.environ.copy()
-    env["MYSQL_PWD"] = os.environ["MYSQL_PASSWORD"]
-    command = [
-        str(mysqldump),
-        f"--host={database['host']}",
-        f"--port={database['port']}",
-        f"--user={database['user']}",
-        "--protocol=tcp",
-        "--single-transaction",
-        "--skip-lock-tables",
-        "--no-tablespaces",
-        "--triggers",
-        "--default-character-set=utf8mb4",
-        str(database["name"]),
-    ]
-
-    with destination.open("wb") as output:
-        result = subprocess.run(
-            command,
-            stdout=output,
-            stderr=subprocess.PIPE,
-            env=env,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-
-    if result.returncode != 0:
-        destination.unlink(missing_ok=True)
-        error_text = result.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeConfigurationError(f"Database backup failed: {error_text}")
-
-    return destination
+    return create_portable_backup(include_media=False)
 
 
 def run_maintenance(config: dict, action: str) -> int:
@@ -271,6 +233,9 @@ def run_server(config: dict, *, no_browser: bool = False) -> int:
         def open_logs(_icon=None, _item=None):
             os.startfile(str(default_data_dir() / "logs"))  # type: ignore[attr-defined]
 
+        def open_backup_restore(_icon=None, _item=None):
+            webbrowser.open(f"http://{host}:{port}/data/")
+
         def quit_portal(icon, _item=None):
             try:
                 server.close()
@@ -283,6 +248,7 @@ def run_server(config: dict, *, no_browser: bool = False) -> int:
             "B.S. Portal",
             menu=pystray.Menu(
                 pystray.MenuItem("Open B.S. Portal", open_portal, default=True),
+                pystray.MenuItem("Backup & restore", open_backup_restore),
                 pystray.MenuItem("View logs", open_logs),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit", quit_portal),
