@@ -1,4 +1,4 @@
-# B.S. Portal — Alpha
+# B.S. Portal — v0.2.0-alpha
 
 Internal operations platform for B.S. Supply Co.
 
@@ -6,7 +6,55 @@ B.S. Portal is an actively developed Django modular monolith for internal busine
 
 The portal is beyond the original foundation-only stage: identity, departments, BAM asset management, SHIT ticketing, and Timeclock workflows are implemented and usable. It remains **alpha software** while authorization, audit enforcement, backup/restore, security hardening, and additional operational modules are still being developed and reviewed.
 
-The current application release is **v0.1.0-alpha**. Human-facing release metadata is defined in `portal/apps/core/version.py` so the UI and tests use one version source of truth.
+The current application release is **v0.2.0-alpha**. Human-facing release metadata is defined in `portal/apps/core/version.py` so the UI and tests use one version source of truth.
+
+## v0.2.0-alpha highlights
+
+`v0.2.0-alpha` is the portal's relationship, resource-allocation, and operator-QoL release. It turns SHIT and BAM from mostly separate operational modules into linked workflows while preserving the boundary between ticket work, asset references, reservations, and physical custody.
+
+### SHIT workbench and preferences
+
+- Board is now the default SHIT view for users without a saved preference.
+- List / Board and Dense / Compact display choices persist as first-party browser preferences.
+- Tickets can reference multiple BAM assets at once through typed relationships such as Related, Affected, Required, Test Equipment, Replacement / Alternate, and Supporting Resource.
+- Existing single-asset ticket references are preserved through a compatibility migration rather than discarded.
+- Asset relationship changes have their own SHIT event history and do not silently alter ticket status, severity, assignment, reservations, or custody.
+- BAM asset records expose permission-filtered SHIT backlinks, while SHIT search and board/list views understand all linked assets.
+
+### BAM resource requests and waitlists
+
+- Asset-use requests are now BAM-native records with human-readable `BAMR-YY-HHHHHH` identifiers and remain separate from the SHIT operational board.
+- Requests can reference supporting SHIT work, requested usage windows, desired completion dates, purpose / justification, and multiple resource requirements in one bundle.
+- Each requirement supports three allocation modes: **any suitable asset**, **prefer this asset with fallback**, or **require this exact asset**.
+- Exact-asset and asset-class waitlists are date-window-aware, with queue positions and non-sensitive queue explanations shown to the requester.
+- Equivalent-asset selection is deterministic rather than random, and explicit manager allocation remains available when automation is not appropriate.
+- Queued requests are reconciled on automation pulses and after relevant manual asset-state changes so an available asset does not remain stranded behind a stale queue entry.
+
+### Reservation, checkout, custody, and handoff
+
+- Reservation state remains distinct from physical custody. An approved future request can be reserved without claiming that the requester already possesses the equipment.
+- Active approved reservations can become reservation-backed checkouts that transfer actual BAM custody to the requester.
+- Checkout history, due dates, overdue detection, explicit return processing, and direct handoff to the next approved user are implemented.
+- A non-overlapping future reservation can be approved while the asset is still checked out today, enabling clean end-of-use handoffs without fake intermediate returns.
+- Overdue physical checkouts continue to block future automatic allocation until the asset is returned or deliberately handed off.
+
+### BAM automation and Vanguard stock custody
+
+- `vanguard` can serve as the configurable default stock custodian for unissued company assets; company ownership and custody remain separate concepts.
+- New or currently unassigned eligible company assets can default to the configured stock custodian without overwriting an existing custodian.
+- Available requests can auto-approve, reserve, and—when the requested window is active—auto-checkout to the requester. Unavailable requests enter the waitlist instead.
+- Good-condition self-service releases can automatically promote and transfer the asset to the next eligible request; if nobody is waiting, custody returns to stock.
+- Problem releases can mark an asset on allocation hold so damaged, incomplete, or needs-attention equipment is not immediately reissued.
+- Automatic approval, automatic checkout / transfer, automatic waitlist promotion, automatic transfer-on-release, equivalent substitution, and the automation audit actor are administrator-configurable.
+- Individual assets can opt out of automatic allocation or be placed on an explicit allocation hold while remaining available for deliberate manager action when policy permits.
+- `process_bam_automation` provides an idempotent catch-up pulse for due reservations and queue reconciliation; the Windows launcher runs a safe pulse after schema checks.
+
+### Operator QoL, privacy, and auditability
+
+- Django messages now render as global success / warning / error / informational toast notifications throughout the portal.
+- BAM request, reservation, checkout, handoff, release, queue, and automated actions continue to write explicit history rather than becoming invisible background behavior.
+- Restricted request information is filtered from BAM checkout/backlink views and from audit/custody prose shown to users who cannot open the underlying request.
+- Manual custody override remains available as an administrative escape hatch but is visually separated from the normal reservation-backed checkout workflow.
 
 ## Documentation
 
@@ -35,6 +83,23 @@ The current application release is **v0.1.0-alpha**. Human-facing release metada
 - asset evidence / file attachments with SHA-256 metadata
 - asset relationships
 - SHIT ticket linkage
+- BAM-native asset-use requests kept separate from the SHIT operational board
+- human-readable `BAMR-YY-HHHHHH` request identifiers
+- requested usage windows, desired completion dates, justification, and optional SHIT work references
+- multi-item resource requests / equipment bundles
+- allocation preferences: any suitable asset, preferred-with-fallback, or exact-asset-required
+- exact-asset and asset-class waitlists
+- department-scoped reservation approval and deterministic equivalent-asset selection
+- reservation-backed checkout that converts approved use into physical custody
+- return processing, direct handoff to the next approved user, and checkout history
+- overdue checkout detection using the approved request window
+- automatic approval of available BAM requests, with unavailable requests entering the waitlist
+- Vanguard/default stock custody for unissued company assets, configurable from BAM automation settings
+- automatic custody transfer for active approved requests, with administrator kill switches for auto-approval and auto-transfer
+- automatic promotion and reconciliation of compatible waitlisted requests when an asset is released, returned, or otherwise becomes eligible
+- self-service asset release by the current custodian, with condition reporting and allocation holds for damaged/problem assets
+- per-asset automatic-allocation opt-out and manual allocation override
+- reservation history/backlinks without silently changing BAM custody until checkout actually occurs
 
 ### SHIT — Software Helpdesk and Internet Technology
 
@@ -43,14 +108,16 @@ The current application release is **v0.1.0-alpha**. Human-facing release metada
 - department and user assignment
 - requester-visible comments and internal notes
 - file attachments with SHA-256 metadata
-- BAM asset and PSOP/document references
+- typed multi-asset BAM relationships and PSOP/document references
 - ticket event/history trail
 - conventional searchable/filterable List view
-- operational Board view using the same Ticket records and workflow services
+- operational Board view using the same Ticket records and workflow services; Board is the default when no saved preference exists
 - drag/drop status movement with server-side authorization
 - independent manual queue ordering
 - accessible non-drag queue controls
 - responsive Dense / Compact ticket-detail layouts
+- asset-link history for add/remove/relationship changes
+- browser-local persistence for SHIT List/Board and detail-density preferences
 
 Ticket identifiers use the current immutable format:
 
@@ -77,6 +144,7 @@ where `HHHHHH` is a six-character uppercase hexadecimal suffix protected by a da
 - local media storage
 - cPanel / Passenger staging entry point
 - service-layer business logic
+- global toast notifications for Django success/warning/error messages
 - database constraints for important invariants
 - automated tests for core and operational behavior
 
@@ -121,6 +189,7 @@ The launcher will:
 - validate required MySQL configuration
 - run Django system checks
 - check for pending migrations without applying them
+- run one safe BAM automation catch-up pulse after schema checks pass
 - start the Django development server
 - open the portal in the default browser
 
