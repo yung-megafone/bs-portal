@@ -11,12 +11,15 @@
             const allowedThemes = ["bs-blue", "bs-red"];
             let theme = "bs-blue";
             try {
-                const savedTheme = localStorage.getItem("bs-portal-theme");
+                const preferences = JSON.parse(
+                    localStorage.getItem("bs-portal-preferences-v1") || "{}"
+                );
+                const savedTheme = preferences.theme || localStorage.getItem("bs-portal-theme");
                 if (allowedThemes.includes(savedTheme)) {
                     theme = savedTheme;
                 }
             } catch (error) {
-                // localStorage is optional. B.S. Blue remains the safe default.
+                // Browser preference storage is optional. B.S. Blue is the safe default.
             }
             document.documentElement.dataset.theme = theme;
         }());
@@ -24,7 +27,9 @@
     <link rel="stylesheet" href="{% static 'css/portal.css' %}">
     <link rel="stylesheet" href="{% static 'css/account-menu.css' %}">
     <link rel="stylesheet" href="{% static 'css/timeclock.css' %}">
+    <script src="{% static 'js/preferences.js' %}" defer></script>
     <script src="{% static 'js/theme.js' %}" defer></script>
+    <script src="{% static 'js/toasts.js' %}" defer></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -77,6 +82,7 @@
                 <div class="account-section account-links">
                     <span class="account-section-label">Administration</span>
                     <a href="/admin/">Django admin</a>
+                    <a href="/admin/bam/bamautomationsettings/1/change/">BAM automation</a>
                 </div>
                 {% endif %}
                 <div class="account-section account-links">
@@ -90,6 +96,17 @@
     </div>
     {% endif %}
 </header>
+
+{% if messages %}
+<div class="toast-stack" aria-live="polite" aria-atomic="false" data-toast-stack>
+    {% for message in messages %}
+    <div class="toast toast-{{ message.tags|default:'info' }}" role="status" data-toast>
+        <div class="toast-body">{{ message }}</div>
+        <button class="toast-close" type="button" aria-label="Dismiss notification" data-toast-close>×</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <main class="container">
     {% block content %}{% endblock %}
