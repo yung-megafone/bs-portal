@@ -1,11 +1,40 @@
+import os
+
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.db.models import Q
+
+from apps.core.version import RELEASE_CHANNEL, __version__
 
 
 def health(request):
     return JsonResponse({"status": "ok"})
+
+
+def about(request):
+    build_id = os.environ.get("BS_PORTAL_BUILD_ID", "").strip()
+    return render(
+        request,
+        "core/about.html",
+        {
+            "portal_version": __version__,
+            "release_channel": RELEASE_CHANNEL,
+            "build_id": build_id,
+        },
+    )
+
+
+def privacy(request):
+    return render(request, "core/privacy.html")
+
+
+def security(request):
+    return render(request, "core/security.html")
+
+
+def license_info(request):
+    return render(request, "core/license.html")
 
 
 @login_required
@@ -28,7 +57,6 @@ def dashboard(request):
         ).distinct().count(),
     }
     timeclock_summary = get_clock_state(request.user)
-
     return render(
         request,
         "core/dashboard.html",
