@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}First-run setup — B.S. Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/about.css' %}">
+{% endblock %}
+
+{% block content %}
+<article class="policy-shell">
+    <header class="policy-hero">
+        <span class="eyebrow">Windows desktop setup</span>
+        <h1>Create the first administrator</h1>
+        <p class="lede">
+            The local database is ready. Create the first B.S. Portal administrator account to finish setup.
+        </p>
+    </header>
+
+    <section class="policy-section">
+        <form method="post" class="stack-form" autocomplete="off">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Create administrator</button>
+        </form>
+        <p class="muted">
+            This bootstrap page is available only in the localhost Windows desktop build and automatically disables itself after the first account is created.
+        </p>
+    </section>
+</article>
+{% endblock %}
