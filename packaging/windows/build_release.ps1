@@ -45,6 +45,7 @@ Write-Step "Installing Windows packaging dependencies..."
 & $PythonExe -m pip install -r $Requirements
 if ($LASTEXITCODE -ne 0) { throw "Packaging dependency installation failed." }
 
+$env:DJANGO_SETTINGS_MODULE = "config.settings.desktop"
 $env:DJANGO_SECRET_KEY = "build-only-secret-not-used-at-runtime"
 $env:MYSQL_DATABASE = "bsportal"
 $env:MYSQL_USER = "bsportal_app"
@@ -52,6 +53,17 @@ $env:MYSQL_PASSWORD = "build-only"
 $env:MYSQL_HOST = "127.0.0.1"
 $env:MYSQL_PORT = "33069"
 $env:BS_PORTAL_DATA_DIR = (Join-Path $BuildDir "runtime-data")
+
+Write-Step "Validating desktop Django settings for PyInstaller..."
+$PortalDir = Join-Path $Root "portal"
+Push-Location $PortalDir
+try {
+    & $PythonExe -c "import django; django.setup(); from django.conf import settings; assert settings.ROOT_URLCONF == 'config.urls'; assert settings.WSGI_APPLICATION == 'config.wsgi.application'; print('Desktop settings OK:', settings.SETTINGS_MODULE)"
+    if ($LASTEXITCODE -ne 0) { throw "Desktop Django settings preflight failed." }
+}
+finally {
+    Pop-Location
+}
 
 if (Test-Path -LiteralPath $StaticDir) {
     Remove-Item -LiteralPath $StaticDir -Recurse -Force
