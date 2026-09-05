@@ -157,6 +157,7 @@ where `HHHHHH` is a six-character uppercase hexadecimal suffix protected by a da
 - no separate frontend build pipeline
 - Linux deployment target
 - Windows 10-friendly local development
+- packaged Windows desktop/installer target
 - cPanel / Passenger staging target
 
 ## Environments
@@ -165,8 +166,32 @@ where `HHHHHH` is a six-character uppercase hexadecimal suffix protected by a da
 - `config.settings.test` — automated tests
 - `config.settings.staging` — `dev.bssply.co`
 - `config.settings.production` — future production deployment
+- `config.settings.desktop` — packaged localhost-only Windows application
 
-Secrets and machine-specific configuration belong in `.env` and must not be committed.
+For source-based deployments, secrets and machine-specific configuration belong in `.env` and must not be committed. The packaged Windows build instead generates protected machine-local runtime configuration under ProgramData.
+
+
+## Packaged Windows application
+
+`v0.2.0-alpha` can also be built as a normal Windows application instead of requiring a source checkout, Python environment, or manually configured MySQL instance. The user-facing release artifact is a single file:
+
+```text
+BS-Portal-v0.2.0-alpha-Setup.exe
+```
+
+Setup installs `BS-Portal.exe`, provisions an isolated localhost-only MySQL 8.4 LTS service named `BSPortalMySQL`, generates application credentials, protects local secrets with Windows DPAPI, takes a database backup before release migrations, and launches the portal on `http://127.0.0.1:8765/`. Python, Django, pip, Git, and a developer virtual environment are not required on the target workstation.
+
+The private packaged database listens on `127.0.0.1:33069` so it does not collide with a developer MySQL instance on the conventional `3306` port. Runtime data is kept outside the executable under `%ProgramData%\B.S. Supply Co\B.S. Portal`, including the authoritative MySQL data directory, uploads, application/setup logs, backups, and protected runtime configuration. Uninstall intentionally preserves that ProgramData state for recovery/reinstallation.
+
+On a new database, the packaged app opens a localhost-only first-run page to create the initial administrator; the bootstrap route disables itself after the first account exists. The executable uses Waitress rather than Django's development server, WhiteNoise for static assets, and a small system-tray controller for opening the portal, viewing logs, or exiting the local server.
+
+Build it on Windows with:
+
+```powershell
+.\packaging\windows\build_release.ps1
+```
+
+The finished installer and checksum file are written under `release\windows\`. By default, Setup downloads pinned runtime dependencies directly from Oracle/Microsoft when needed; an optional offline dependency bundle can be produced with `-BundleDependencies` after reviewing third-party redistribution obligations. Dependency payloads are only embedded when that switch is explicitly used, even if cached vendor files remain from an earlier build. See [`packaging/windows/README.md`](packaging/windows/README.md) for the full build/runtime design.
 
 ## Quick start — Windows
 
