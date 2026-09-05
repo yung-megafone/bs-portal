@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Security — B.S. Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/about.css' %}">
+{% endblock %}
+
+{% block content %}
+<article class="policy-shell">
+    <header class="policy-hero">
+        <span class="eyebrow">Policy</span>
+        <h1>Security posture.</h1>
+        <p class="lede">B.S. Portal has meaningful security controls, but the current release is still alpha software.</p>
+        <p class="policy-meta">Current master / active alpha · Best-effort security support</p>
+    </header>
+
+    <div class="policy-callout policy-callout-warning">
+        <strong>Do not publish vulnerabilities, credentials, private records, or exploitable proofs-of-concept in a public issue.</strong>
+        Use GitHub private vulnerability reporting/security advisories when available, or a private contact method published by the repository owner.
+    </div>
+
+    <section class="policy-section">
+        <h2>Current security boundary</h2>
+        <ul>
+            <li>Django authentication, session, CSRF, and clickjacking protections provide the framework baseline.</li>
+            <li>Operational pages require authentication where appropriate.</li>
+            <li>State-changing workflows enforce authorization on the server rather than trusting client controls.</li>
+            <li>SHIT separates ticket visibility from ticket-management authority.</li>
+            <li>Board status and queue-order mutations are server-authorized and validated.</li>
+            <li>Domain histories improve accountability but are not yet a tamper-proof centralized audit ledger.</li>
+        </ul>
+    </section>
+
+    <section class="policy-section">
+        <h2>Alpha deployment restrictions</h2>
+        <ul>
+            <li>Use synthetic/disposable data in publicly reachable staging environments.</li>
+            <li>Never expose Django with <code>DEBUG=True</code> to the public internet.</li>
+            <li>Keep secrets and machine-specific credentials outside source control.</li>
+            <li>Review migrations and verify backups before applying schema changes to valuable data.</li>
+            <li>Do not treat Django admin as a routine least-privilege operator interface.</li>
+            <li>Do not assume the current application authorization model is the final production RBAC design.</li>
+        </ul>
+    </section>
+
+    <section class="policy-section">
+        <h2>Production baseline</h2>
+        <p>Before BSP is treated as production-ready, deployments should verify:</p>
+        <ul>
+            <li><code>DEBUG=False</code>, explicit hosts/origins, and HTTPS/TLS at the public boundary.</li>
+            <li>Secure session/CSRF cookie configuration and reviewed security headers.</li>
+            <li>Least-privilege database, filesystem, and administrative access.</li>
+            <li>Private protection of environment files, uploaded media, logs, and backups.</li>
+            <li>Tested backup <em>and restore</em> procedures.</li>
+            <li>Dependency/security updates and authorization tests for privileged workflows.</li>
+            <li>An incident-response and credential-rotation procedure.</li>
+        </ul>
+    </section>
+
+    <section class="policy-section">
+        <h2>Uploads and operational data</h2>
+        <p>
+            BAM evidence and SHIT attachments are untrusted user-controlled content. Deployments should keep media outside
+            executable/static paths, prevent execution of uploads, enforce sensible size limits, avoid trusting filename/MIME
+            claims, and consider content scanning before broad production exposure.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Planned hardening</h2>
+        <p>
+            Major remaining work includes a formal authorization matrix, MFA/passkeys, rate limiting, stronger database role
+            separation, centralized/database-enforced append-only auditing, production cookie/header review, CSP evaluation,
+            dependency/static analysis, upload scanning strategy, backup/restore drills, threat modeling, and deployment review.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Privacy-sensitive security</h2>
+        <p>
+            Security controls should protect operational records without turning BSP into an employee-surveillance platform.
+            The reference Timeclock design intentionally avoids GPS tracking, biometrics, device fingerprints, advertising IDs,
+            and continuous-presence telemetry. See the <a href="{% url 'privacy' %}">Privacy Policy</a>.
+        </p>
+    </section>
+
+    <div class="policy-actions">
+        <a class="button secondary" href="{% url 'about' %}">Back to About</a>
+        <a href="https://github.com/yung-megafone/bs-portal/blob/master/SECURITY.md" rel="noopener noreferrer">Full repository security policy →</a>
+    </div>
+</article>
+{% endblock %}
