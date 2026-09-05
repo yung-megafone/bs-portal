@@ -46,3 +46,9 @@ data/
 # Temporary files
 *.tmp
 *.bak
+# Packaged Windows release output
+.desktop_staticfiles/
+.build/
+release/
+packaging/windows/vendor/*.zip
+packaging/windows/vendor/*.exe
