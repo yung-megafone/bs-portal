@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Privacy — B.S. Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/about.css' %}">
+{% endblock %}
+
+{% block content %}
+<article class="policy-shell">
+    <header class="policy-hero">
+        <span class="eyebrow">Policy</span>
+        <h1>Privacy first.</h1>
+        <p class="lede">B.S. Portal is designed to collect what operations require, not what is merely available.</p>
+        <p class="policy-meta">B.S. Portal Alpha · Last updated September 1, 2026</p>
+    </header>
+
+    <div class="policy-callout">
+        <strong>Reference deployment:</strong> This policy describes the B.S. Portal software and the intended
+        B.S. Supply Co. deployment. Because BSP is open source and self-hostable, another operator can configure
+        hosting, logging, integrations, access, and retention differently and is responsible for documenting those choices.
+    </div>
+
+    <section class="policy-section">
+        <h2>Core privacy principles</h2>
+        <ul>
+            <li>No advertising or ad-tech tracking.</li>
+            <li>No sale of portal data.</li>
+            <li>No third-party behavioral analytics by default.</li>
+            <li>No covert employee/location surveillance features.</li>
+            <li>Keep operational data first-party and self-hostable.</li>
+            <li>Prefer explicit records and accountable history over invisible profiling.</li>
+        </ul>
+    </section>
+
+    <section class="policy-section">
+        <h2>What BSP processes</h2>
+        <p><strong>Identity:</strong> account identifiers, authentication state, staff roles, and department memberships required to operate authenticated workflows.</p>
+        <p><strong>BAM:</strong> asset identity, type, manufacturer/model/serial, department ownership, custodian, evidence, and custody/lifecycle history.</p>
+        <p><strong>SHIT:</strong> requester and assignment information, ticket text, severity/status, comments, internal notes, attachments, related assets/documents, event history, and queue position.</p>
+        <p><strong>Timeclock:</strong> employee identity, clock-in/out timestamps, punch source, corrections, correction reasons, and related audit events.</p>
+        <p>The current Timeclock module is intentionally not designed to collect GPS location, biometrics, device fingerprints, advertising identifiers, or continuous-presence telemetry.</p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Cookies, logs, and telemetry</h2>
+        <p>
+            BSP uses the session and CSRF state required by Django for authenticated operation and request protection.
+            These are functional/security mechanisms, not advertising cookies. The application does not require a
+            third-party analytics or advertising SDK.
+        </p>
+        <p>
+            A deployment's web server, reverse proxy, host, operating system, database, or security tooling may still
+            create technical logs such as IP addresses, timestamps, paths, browser user agents, errors, or authentication events.
+            Those logs are controlled by the deployment operator.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>How information is used</h2>
+        <p>
+            Operational records are used to authenticate users, enforce access, run department workflows, maintain assets,
+            manage service tickets, record work-time punches, preserve accountable history, diagnose failures, protect the
+            service, and perform authorized backup/recovery. BSP is not designed for advertising, cross-service profiling,
+            or sale to data brokers.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Sharing and storage</h2>
+        <p>
+            BSP does not require sharing records with advertisers. Data may be accessible to authorized portal users,
+            deployment administrators, configured infrastructure/storage providers, or parties entitled to information
+            through applicable legal process. Third-party integrations that receive BSP data should be documented explicitly.
+        </p>
+        <p>
+            The reference architecture uses MySQL/InnoDB and application-controlled media storage. Self-hosted operators
+            determine where databases, uploads, logs, and backups physically reside and should protect backups as copies of
+            the same operational data.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Retention, correction, and deletion</h2>
+        <p>
+            BSP contains history-oriented records such as custody events, ticket events, time punches, and corrections.
+            The alpha software does not currently impose one universal retention schedule. Operators should define retention
+            according to operational, contractual, legal, and security requirements.
+        </p>
+        <p>
+            Where preserving history is important, BSP may retain the original record and append a correction instead of
+            silently rewriting history. Requests that cannot be handled in the portal should be directed to the operator of
+            the specific BSP instance.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Open-source privacy</h2>
+        <p>
+            Downloading, cloning, building, or running the B.S. Portal source code does not intentionally contact B.S. Supply Co.
+            for telemetry or usage analytics. A fork can change that behavior, so users of third-party deployments should review
+            the operator's own policy and configuration.
+        </p>
+    </section>
+
+    <section class="policy-section">
+        <h2>Security and changes</h2>
+        <p>Privacy depends on security. See the <a href="{% url 'security' %}">BSP Security Policy</a> for current alpha limitations and deployment expectations.</p>
+        <p>Material privacy-impacting changes should be documented alongside the corresponding code or deployment change.</p>
+    </section>
+
+    <div class="policy-actions">
+        <a class="button secondary" href="{% url 'about' %}">Back to About</a>
+        <a href="https://github.com/yung-megafone/bs-portal/blob/master/PRIVACY.md" rel="noopener noreferrer">Repository policy →</a>
+    </div>
+</article>
+{% endblock %}
