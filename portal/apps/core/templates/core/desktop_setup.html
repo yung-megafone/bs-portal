@@ -5,27 +5,48 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/about.css' %}">
+<link rel="stylesheet" href="{% static 'css/data-management.css' %}">
 {% endblock %}
 
 {% block content %}
 <article class="policy-shell">
     <header class="policy-hero">
         <span class="eyebrow">Windows desktop setup</span>
-        <h1>Create the first administrator</h1>
+        <h1>Initialize B.S. Portal</h1>
         <p class="lede">
-            The local database is ready. Create the first B.S. Portal administrator account to finish setup.
+            Start a new local portal or restore an existing B.S. Portal backup from another installation.
         </p>
     </header>
 
-    <section class="policy-section">
-        <form method="post" class="stack-form" autocomplete="off">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">Create administrator</button>
-        </form>
-        <p class="muted">
-            This bootstrap page is available only in the localhost Windows desktop build and automatically disables itself after the first account is created.
-        </p>
-    </section>
+    <div class="data-grid">
+        <section class="policy-section card">
+            <span class="data-kicker">New installation</span>
+            <h2>Create the first administrator</h2>
+            <form method="post" class="stack-form" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_admin">
+                {{ form.as_p }}
+                <button type="submit">Create administrator</button>
+            </form>
+        </section>
+
+        <section class="policy-section card data-danger-card">
+            <span class="data-kicker">Existing installation</span>
+            <h2>Restore portable backup</h2>
+            <p class="muted">
+                Moving your dev data into this packaged installation? Restore the <code>.bsbackup</code> here and skip creating a temporary local administrator.
+            </p>
+            <form method="post" enctype="multipart/form-data" class="stack-form" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restore">
+                {{ restore_form.as_p }}
+                <button type="submit" class="danger-button">Validate & restore backup</button>
+            </form>
+        </section>
+    </div>
+
+    <p class="muted">
+        This bootstrap page is available only in the localhost Windows desktop build and automatically disables itself after the restored database or first administrator creates a user account.
+    </p>
 </article>
 {% endblock %}
