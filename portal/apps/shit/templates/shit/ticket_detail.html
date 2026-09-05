@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="hero compact-hero shit-hero shit-ticket-hero" data-ticket-detail-header>
+<section class="hero compact-hero shit-hero shit-ticket-hero" data-ticket-detail-header data-saved-density="{{ detail_density_preference }}">
     <div class="shit-detail-header-main">
         <div class="shit-detail-identity">
             <p class="eyebrow">SHIT TICKET</p>
@@ -30,7 +30,7 @@
             </div>
             <div class="shit-detail-nav">
                 <a href="{% url 'shit:list' %}?view=board">Board</a>
-                <a href="{% url 'shit:list' %}">List</a>
+                <a href="{% url 'shit:list' %}?view=list">List</a>
             </div>
         </div>
     </div>
@@ -40,11 +40,11 @@
         <div><dt>Department</dt><dd>{{ ticket.assigned_department.code|default:"—" }}</dd></div>
         <div><dt>Opened</dt><dd>{{ ticket.created_at|timesince }} ago</dd></div>
         <div><dt>Queue</dt><dd>{{ ticket.queue_position }}</dd></div>
-        {% if ticket.related_asset %}<div><dt>Asset</dt><dd class="mono">{{ ticket.related_asset.asset_id }}</dd></div>{% endif %}
+        {% if asset_link_count %}<div><dt>Assets</dt><dd>{{ asset_link_count }} linked</dd></div>{% endif %}
     </dl>
 </section>
 
-<div class="shit-workbench-grid shit-detail-workbench" data-ticket-detail data-density="dense">
+<div class="shit-workbench-grid shit-detail-workbench" data-ticket-detail data-density="{% if detail_density_preference %}{{ detail_density_preference }}{% else %}dense{% endif %}">
     <main class="shit-workbench-main stack">
         <section class="card shit-panel">
             <div class="shit-panel-heading">
@@ -180,26 +180,105 @@
 
         <details class="shit-sidebar-section" open data-detail-section>
             <summary>
-                <span><span class="eyebrow">BAM</span><strong>Asset</strong></span>
+                <span><span class="eyebrow">BAM</span><strong>Assets{% if asset_link_count %} · {{ asset_link_count }}{% endif %}</strong></span>
                 <span class="shit-collapse-indicator" aria-hidden="true">⌄</span>
             </summary>
             <div class="card shit-panel shit-asset-context shit-sidebar-panel-body">
                 <div class="shit-panel-heading shit-dense-only-heading">
-                    <div><p class="eyebrow">BAM</p><h2>Asset</h2></div>
+                    <div><p class="eyebrow">BAM</p><h2>Asset relationships</h2></div>
+                    {% if asset_link_count %}<span class="muted">{{ asset_link_count }} linked</span>{% endif %}
                 </div>
-                {% if ticket.related_asset %}
-                <a class="mono shit-asset-id" href="{% url 'bam:detail' ticket.related_asset.asset_id %}">{{ ticket.related_asset.asset_id }}</a>
-                <dl class="record-grid shit-record-grid">
-                    <dt>Type</dt><dd>{{ ticket.related_asset.asset_type }}</dd>
-                    <dt>Hardware</dt><dd>{% if ticket.related_asset.manufacturer or ticket.related_asset.model %}{{ ticket.related_asset.manufacturer }} {{ ticket.related_asset.model }}{% else %}—{% endif %}</dd>
-                    <dt>Status</dt><dd>{{ ticket.related_asset.status }}</dd>
-                    <dt>Department</dt><dd>{{ ticket.related_asset.department.code }}</dd>
-                    <dt>Custodian</dt><dd>{{ ticket.related_asset.current_custodian|default:"—" }}</dd>
-                    <dt>Serial</dt><dd class="mono">{{ ticket.related_asset.serial_number|default:"—" }}</dd>
-                </dl>
-                <a href="{% url 'bam:detail' ticket.related_asset.asset_id %}">Open BAM record</a>
-                {% else %}
-                <p class="muted">No BAM asset linked to this ticket.</p>
+
+                <div class="shit-asset-link-list">
+                    {% for link in asset_links %}
+                    <article class="shit-asset-link-card">
+                        <div class="shit-asset-link-heading">
+                            <div>
+                                <a class="mono shit-asset-id" href="{% url 'bam:detail' link.asset.asset_id %}">{{ link.asset.asset_id }}</a>
+                                <span class="pill shit-relationship-pill">{{ link.get_relationship_type_display }}</span>
+                            </div>
+                            <small>{{ link.asset.department.code }} · {{ link.asset.status }}</small>
+                        </div>
+                        <dl class="record-grid shit-record-grid shit-asset-link-facts">
+                            <dt>Type</dt><dd>{{ link.asset.asset_type }}</dd>
+                            <dt>Hardware</dt><dd>{% if link.asset.manufacturer or link.asset.model %}{{ link.asset.manufacturer }} {{ link.asset.model }}{% else %}—{% endif %}</dd>
+                            <dt>Custodian</dt><dd>{{ link.asset.current_custodian|default:"—" }}</dd>
+                            {% if link.note %}<dt>Context</dt><dd>{{ link.note }}</dd>{% endif %}
+                        </dl>
+                        <div class="shit-asset-link-actions">
+                            <a href="{% url 'bam:request_asset' link.asset.asset_id %}?ticket={{ ticket.ticket_number|urlencode }}">Request allocation</a>
+                        </div>
+
+                        {% if can_manage %}
+                        <details class="shit-asset-link-editor">
+                            <summary>Edit relationship</summary>
+                            <form method="post" action="{% url 'shit:asset_update' ticket.ticket_number link.id %}" class="stack-form">
+                                {% csrf_token %}
+                                <div class="field shit-field">
+                                    <label for="relationship-{{ link.id }}">Relationship</label>
+                                    <select id="relationship-{{ link.id }}" name="relationship_type">
+                                        {% for value, label in asset_relationship_choices %}
+                                        <option value="{{ value }}" {% if value == link.relationship_type %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="field shit-field">
+                                    <label for="relationship-note-{{ link.id }}">Relationship note</label>
+                                    <input id="relationship-note-{{ link.id }}" name="note" maxlength="240" value="{{ link.note }}" placeholder="Optional context">
+                                </div>
+                                <button type="submit">Save relationship</button>
+                            </form>
+                            <form method="post" action="{% url 'shit:asset_remove' ticket.ticket_number link.id %}" class="shit-unlink-form">
+                                {% csrf_token %}
+                                <button type="submit" class="secondary">Unlink asset</button>
+                            </form>
+                        </details>
+                        {% endif %}
+                    </article>
+                    {% empty %}
+                    <p class="muted">No BAM assets linked to this ticket.</p>
+                    {% endfor %}
+                </div>
+
+                {% if asset_requests %}
+                <div class="shit-linked-asset-requests">
+                    <p class="eyebrow">BAM REQUESTS · {{ asset_request_count }}</p>
+                    {% for asset_request in asset_requests %}
+                    <article class="shit-asset-request-summary">
+                        <div><a class="mono" href="{% url 'bam:request_detail' asset_request.request_number %}">{{ asset_request.request_number }}</a><strong>{{ asset_request.get_status_display }}</strong></div>
+                        <small>{{ asset_request.requested_start }} → {{ asset_request.requested_end }} · {{ asset_request.requester }}</small>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if can_manage %}
+                <div class="shit-add-asset-link">
+                    <p class="eyebrow">ADD RELATIONSHIP</p>
+                    <form method="post" action="{% url 'shit:asset_add' ticket.ticket_number %}" class="stack-form">
+                        {% csrf_token %}
+                        <div class="shit-asset-picker shit-asset-picker-compact" data-asset-picker>
+                            <label for="asset-search-manage">Find asset</label>
+                            <input id="asset-search-manage" type="search" data-asset-filter placeholder="Filter BAM assets..." autocomplete="off">
+                            <div class="field shit-field">
+                                {{ asset_link_form.asset.label_tag }}
+                                {{ asset_link_form.asset }}
+                            </div>
+                            <small class="muted" data-asset-context>No BAM asset selected.</small>
+                        </div>
+                        <div class="field shit-field">
+                            {{ asset_link_form.relationship_type.label_tag }}
+                            {{ asset_link_form.relationship_type }}
+                        </div>
+                        <div class="field shit-field">
+                            {{ asset_link_form.note.label_tag }}
+                            {{ asset_link_form.note }}
+                            {% if asset_link_form.note.help_text %}<small class="muted">{{ asset_link_form.note.help_text }}</small>{% endif %}
+                        </div>
+                        <button type="submit">Link asset</button>
+                        <small class="muted">Linking records context only. It does not reserve the asset or transfer custody.</small>
+                    </form>
+                </div>
                 {% endif %}
             </div>
         </details>
@@ -238,16 +317,6 @@
                         {{ manage_form.assigned_user.label_tag }}
                         {{ manage_form.assigned_user }}
                         {% for error in manage_form.assigned_user.errors %}<span class="error">{{ error }}</span>{% endfor %}
-                    </div>
-                    <div class="shit-asset-picker shit-asset-picker-compact" data-asset-picker>
-                        <label for="asset-search-manage">Find asset</label>
-                        <input id="asset-search-manage" type="search" data-asset-filter placeholder="Filter BAM assets..." autocomplete="off">
-                        <div class="field shit-field">
-                            {{ manage_form.related_asset.label_tag }}
-                            {{ manage_form.related_asset }}
-                            {% for error in manage_form.related_asset.errors %}<span class="error">{{ error }}</span>{% endfor %}
-                        </div>
-                        <small class="muted" data-asset-context></small>
                     </div>
                     <div class="field shit-field">
                         {{ manage_form.related_document.label_tag }}
