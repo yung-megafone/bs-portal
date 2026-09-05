@@ -17,8 +17,8 @@
     <section class="card module-live">
         <p class="eyebrow">LIVE MODULE</p>
         <h2><a href="{% url 'bam:list' %}">BAM</a></h2>
-        <p><strong>{{ bam_summary.total }}</strong> assets · {{ bam_summary.in_custody }} assigned to custodians.</p>
-        <p><a href="{% url 'bam:create' %}">Register asset →</a></p>
+        <p><strong>{{ bam_summary.total }}</strong> assets · {{ bam_summary.active_checkouts }} active checkout{{ bam_summary.active_checkouts|pluralize }}{% if bam_summary.my_checkouts %} · <strong>{{ bam_summary.my_checkouts }}</strong> assigned to you{% endif %}{% if bam_summary.my_open_requests %} · {{ bam_summary.my_open_requests }} of your requests open{% endif %}.</p>
+        <p><a href="{% url 'bam:checkout_list' %}?scope=my">My assets →</a> · <a href="{% url 'bam:request_list' %}">Asset requests →</a> · <a href="{% url 'bam:create' %}">Register asset →</a></p>
     </section>
     <section class="card module-live">
         <p class="eyebrow">LIVE MODULE</p>
