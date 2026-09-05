@@ -133,6 +133,11 @@ try {
         }
 
         Write-Step "Database is reachable and no migrations are pending."
+        Write-Step "Running one BAM automation pulse (safe operational catch-up)..."
+        & $VenvPython $ManagePy process_bam_automation --settings=config.settings.local
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "BAM automation pulse failed; continuing to runserver so the portal remains available." -ForegroundColor Yellow
+        }
         $UrlHost = ($Bind -split ":", 2)[0]
         $UrlPort = if ($Bind -match ":(\d+)$") { $Matches[1] } else { "8000" }
         if ($UrlHost -eq "0.0.0.0") {
