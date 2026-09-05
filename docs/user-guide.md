@@ -28,6 +28,17 @@ BSP is the authenticated internal operations portal for B.S. Supply Co. The prim
 
 The account control at the right side of the navigation identifies the signed-in user. Access to operational pages requires authentication.
 
+### Account menu and About
+
+Open the account control at the upper-right to access appearance controls and account actions. The **B.S. Portal** section also provides:
+
+- **About B.S. Portal** — current application version, alpha channel, credits, technology baseline, source repository, and MIT licensing information;
+- **Privacy** — the privacy-first data-handling policy;
+- **Security** — current alpha security posture, deployment boundaries, and vulnerability-reporting guidance.
+- **License** — the MIT license governing reuse, modification, and redistribution of BSP.
+
+The About, Privacy, Security, and License pages are intentionally readable without authentication so the software's policies and terms can be inspected before signing in.
+
 ## Dashboard
 
 The Dashboard is the starting point for BSP. It summarizes the information most useful to the signed-in user:
