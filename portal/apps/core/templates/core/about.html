@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}About — B.S. Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/about.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="about-shell">
+    <header class="about-hero">
+        <div>
+            <span class="eyebrow">Internal Operations Platform</span>
+            <h1>About B.S. Portal</h1>
+            <p class="lede">Privacy-first, self-hostable operations software for B.S. Supply Co.</p>
+        </div>
+        <div class="about-version" aria-label="B.S. Portal version">
+            <span class="about-version-label">{{ release_channel }}</span>
+            <strong>v{{ portal_version }}</strong>
+            {% if build_id %}<span>Build {{ build_id }}</span>{% endif %}
+        </div>
+    </header>
+
+    <div class="about-grid">
+        <section class="about-card about-card-wide">
+            <span class="about-kicker">B.S. Portal</span>
+            <h2>Operational software without the surveillance baggage.</h2>
+            <p>
+                BSP is a Django/MySQL modular monolith for identity, departments, asset management,
+                service ticketing, and timekeeping. The project favors first-party operational records,
+                explicit workflow history, and self-hosting over advertising, behavioral tracking, or
+                unnecessary employee telemetry.
+            </p>
+            <div class="about-actions">
+                <a class="button" href="{% url 'privacy' %}">Privacy policy</a>
+                <a class="button secondary" href="{% url 'security' %}">Security policy</a>
+            </div>
+        </section>
+
+        <section class="about-card">
+            <span class="about-kicker">Release</span>
+            <dl class="about-facts">
+                <div><dt>Version</dt><dd>{{ portal_version }}</dd></div>
+                <div><dt>Channel</dt><dd>{{ release_channel }}</dd></div>
+                <div><dt>Status</dt><dd>Active alpha</dd></div>
+                <div><dt>License</dt><dd>MIT</dd></div>
+            </dl>
+        </section>
+
+        <section class="about-card">
+            <span class="about-kicker">Credits</span>
+            <h2>B.S. Supply Co.</h2>
+            <p>Project design, implementation, and operational direction.</p>
+            <dl class="about-facts">
+                <div><dt>Maintainer</dt><dd><a href="https://github.com/yung-megafone" rel="noopener noreferrer">yung-megafone</a></dd></div>
+                <div><dt>Framework</dt><dd>Django 5.2</dd></div>
+                <div><dt>Runtime</dt><dd>Python 3.11</dd></div>
+                <div><dt>Database</dt><dd>MySQL / InnoDB</dd></div>
+            </dl>
+        </section>
+
+        <section class="about-card">
+            <span class="about-kicker">Open source</span>
+            <h2>MIT licensed</h2>
+            <p>
+                BSP can be used, modified, redistributed, and forked under the MIT License. Copies or
+                substantial portions of the software must retain the copyright and license notice.
+            </p>
+            <a href="{% url 'license' %}">Read the MIT License →</a><br>
+            <a href="https://github.com/yung-megafone/bs-portal" rel="noopener noreferrer">View source repository →</a>
+        </section>
+
+        <section class="about-card">
+            <span class="about-kicker">Privacy</span>
+            <h2>Data minimization by design</h2>
+            <p>
+                The reference BSP application contains no advertising SDK, third-party behavioral
+                analytics, GPS timeclock tracking, biometrics, device fingerprinting, or required telemetry.
+            </p>
+            <a href="{% url 'privacy' %}">Read the privacy policy →</a>
+        </section>
+
+        <section class="about-card">
+            <span class="about-kicker">Security</span>
+            <h2>Alpha means alpha</h2>
+            <p>
+                BSP uses Django security primitives and server-side authorization, but the project is not
+                yet considered production-hardened. Review the deployment baseline and reporting guidance
+                before trusting it with valuable data.
+            </p>
+            <a href="{% url 'security' %}">Read the security policy →</a>
+        </section>
+    </div>
+
+    <p class="about-footnote">
+        Third-party open-source components remain subject to their respective licenses and notices.
+    </p>
+</section>
+{% endblock %}
