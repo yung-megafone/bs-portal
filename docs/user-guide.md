@@ -131,6 +131,52 @@ Use **Assign Custody** to change the current custodian. Custody changes are reta
 
 Use **Evidence** to attach supporting files to the asset. Evidence entries retain file metadata including the original filename, upload information, size, and SHA-256 digest.
 
+### Asset requests and reservations
+
+BAM includes a resource-request queue that is deliberately separate from SHIT. Use it when the work already exists and the remaining problem is **who gets which asset, and when**. A routine laptop/radio/SDR reservation should not become another operational helpdesk ticket merely to put somebody in line.
+
+Open **Asset requests** from BAM to view your own requests. Staff and department managers/administrators can also open the **Managed queue** for departments they are authorized to allocate.
+
+Each request records:
+
+- requester;
+- project/purpose and justification;
+- requested start/end dates;
+- optional desired project-completion date;
+- optional related SHIT ticket;
+- one or more requested resource requirements;
+- reservation/waitlist state and request history.
+
+Asset requests use identifiers in the form `BAMR-YY-HHHHHH`.
+
+#### Request this asset
+
+From an individual BAM asset record, select **Request this asset**. BAM preselects the asset's department, type/class, and the asset itself as your preference. You then choose one of three allocation modes:
+
+- **Any suitable asset** — you care about the resource class, not the exact unit.
+- **Prefer this asset; allow equivalent** — BAM should use the preferred unit when available, otherwise another eligible asset of the same department/type can satisfy the request.
+- **Require this exact asset** — no substitute is acceptable; if the unit is unavailable, the requirement remains on that asset's waitlist.
+
+A request can contain multiple requirements. For example, one RF-development request can ask for a laptop, SDR, and radio while citing the SHIT ticket that the equipment supports. Add additional requirements from the request detail page rather than opening separate SHIT tickets.
+
+#### Reservation versus custody
+
+A BAM reservation does **not** automatically change asset custody. The request queue answers who has an approved claim on a resource for a date window. BAM custody answers who physically holds or is responsible for the asset.
+
+When an authorized department manager issues **Check out**, BSP creates a reservation-backed checkout record and transfers current custody to the requester. Returning the asset closes that checkout/custody assignment. If another approved reservation for the same asset is active or begins the next day, an authorized manager can use **Direct handoff** to transfer custody directly to the next requester without creating a fake overnight inventory gap.
+
+The asset lifecycle status is not silently changed merely because an allocation request is approved or checked out. Assets in non-allocatable states such as Repair, Lost, Retired, Disposed, or administratively Reserved are excluded from automatic equivalent selection.
+
+Open reservation-backed checkouts appear in **Active Checkouts**. A checkout becomes **Overdue** when its BAM request end date has passed and the checkout is still open. Overdue means the approved usage window has expired; it does not represent GPS or inferred physical-location tracking.
+
+#### Waitlists and conflicts
+
+Reservation overlaps are checked on the server. If no eligible equivalent is available, or if an exact-required asset is unavailable, the requirement is placed in the BAM queue instead of modifying SHIT severity/status. Exact-asset requests receive a position in that unit's waitlist; class-based requests queue against the applicable department/type pool.
+
+Department managers can reserve an explicit matching asset or let BAM choose according to the request preference. When BAM chooses among equivalent available units, it uses a deterministic least-recently-allocated policy rather than random selection.
+
+When a reservation is released or a checked-out asset is returned, BAM re-evaluates compatible waitlisted requirements. Previously reviewed waitlisted items can be promoted automatically when the newly available asset satisfies their class/exact-asset rule and requested date window. A physically checked-out asset remains unavailable to new allocation even if its original reservation dates have already passed.
+
 ## SHIT — Software Helpdesk and Internet Technology
 
 SHIT is BSP's service-management and internal ticketing module. The List and Board interfaces operate on the **same Ticket records**; they are two views of the same workflow, not separate ticket systems.
@@ -143,11 +189,11 @@ The ticket workspace provides three scope controls where permitted:
 - **Department queue** — tickets assigned to departments in which you have an active membership.
 - **All tickets** — global ticket visibility for staff/superuser accounts.
 
-The search box can match ticket number, title, description, related PSOP/document reference, or linked BAM asset ID.
+The search box can match ticket number, title, description, related PSOP/document reference, or any BAM asset linked to the ticket.
 
 ### List versus Board
 
-Use the **List / Board** control to choose the interface that fits the task.
+Use the **List / Board** control to choose the interface that fits the task. **Board is the default for a browser with no saved preference.** When you switch between Board and List, BSP remembers that browser preference for later visits.
 
 **List** is intended for search, filtering, auditing, and scanning large numbers of records.
 
@@ -199,13 +245,14 @@ Select **Submit ticket**. The create workbench collects the initial request info
 - ticket type/classification;
 - severity;
 - assigned department;
-- related BAM asset, when applicable;
+- one or more related BAM assets, when applicable;
+- an initial relationship type for selected assets;
 - related PSOP/document reference;
 - initial attachment, when supplied.
 
 New tickets use the existing creation workflow rather than bypassing it. The ticket begins in the normal initial status and assignment can subsequently be managed through the ticket record.
 
-When linking an asset, search/select the existing BAM record. Do not create duplicate asset information inside the ticket description merely to reproduce BAM fields.
+When linking assets, search/select the existing BAM records. A ticket can reference multiple assets at once. The initial relationship type is applied to all assets chosen during creation and can later be refined per asset from the ticket detail page. Do not create duplicate asset information inside the ticket description merely to reproduce BAM fields.
 
 ### Ticket detail workbench
 
@@ -223,15 +270,32 @@ The current detail interface is organized around:
 - **Attachments** — files associated with the ticket, including recorded SHA-256 metadata;
 - **Event history** — operational/audit events for users allowed to manage the ticket;
 - **Ticket context** — type, status, severity, assignment, queue position and timestamps;
-- **BAM context** — linked asset summary and a direct link to the authoritative BAM record;
-- **Manage ticket** — operational fields such as status, severity, department, assignee, asset, and document reference.
+- **BAM context** — all linked assets, their relationship types, optional relationship notes, and direct links to the authoritative BAM records;
+- **Manage ticket** — operational fields such as status, severity, department, assignee, and document reference; BAM relationships are managed in the adjacent asset panel.
 
 The newest UI also provides **Dense / Compact** presentation controls in the detail header:
 
 - **Dense** keeps the context, BAM, and management information expanded for wide workstation displays.
 - **Compact** converts the sidebar into collapsible sections and gives more space to the request/thread area.
 
-BSP defaults toward Dense on wider displays and Compact on narrower desktop/tablet widths, but the operator can override the presentation using the header control.
+BSP defaults toward Dense on wider displays and Compact on narrower desktop/tablet widths when no preference has been saved. Once the operator chooses **Dense** or **Compact**, BSP remembers that browser preference and keeps using it until another density is selected.
+
+### Asset relationship types
+
+SHIT can reference multiple BAM assets without changing BAM custody. Each link has one explicit operational relationship:
+
+- **Related** — general context when no stronger meaning is required.
+- **Affected asset** — the asset experiencing the issue or change.
+- **Required for work** — the work depends on access to this asset, but the link itself is not a reservation.
+- **Test equipment** — equipment used to perform or validate the work.
+- **Replacement / alternate** — a substitute or alternate asset associated with the work.
+- **Supporting resource** — another asset that supports the work but is not the primary affected item.
+
+Managers can add, change, or remove asset relationships from the ticket detail page. Those changes generate SHIT events. The important boundary is:
+
+> **Reference is not allocation.** Linking an asset to a ticket does not reserve it, check it out, or transfer custody. BAM allocation/request workflows are intentionally separate.
+
+Existing tickets that used the older single `related_asset` field are migrated into a normal **Related** asset link when migration `0004_ticket_asset_links` is applied.
 
 ### Comments and internal notes
 
@@ -251,10 +315,12 @@ If you have management permission, the **Manage ticket** section can update the 
 - severity;
 - assigned department;
 - assigned user;
-- related BAM asset;
+- BAM asset relationships (managed separately from the core ticket form);
 - related document / PSOP reference.
 
 Use these controls rather than attempting to encode workflow state in comments or ticket titles.
+
+Linked BAM assets can also expose **Request allocation** actions. Those create BAM resource requests with the SHIT ticket pre-referenced; they do not create child SHIT tickets or change the ticket's severity/queue position. Visible BAM requests supporting a ticket are linked back into the ticket detail view.
 
 ## Timeclock
 
@@ -344,7 +410,7 @@ Reserve Django admin for users who specifically need direct administrative acces
 3. Enter the problem summary and description.
 4. Choose the appropriate ticket type and severity.
 5. Select the responsible department.
-6. Search for and link the existing **BAM asset**.
+6. Search for and link the existing **BAM asset or assets**.
 7. Add an initial attachment if useful.
 8. Submit the ticket.
 9. Use the ticket detail page for follow-up comments/files.
@@ -384,3 +450,15 @@ The BAM record remains authoritative for asset identity and custody; the SHIT ti
 This guide intentionally does not duplicate local setup, migration, deployment, or architecture instructions.
 
 See the repository [`README.md`](../README.md), [`development/`](development/), [`architecture/`](architecture/), and [`adr/`](adr/) documentation for those topics.
+
+## BAM automation, stock custody, and self-service release
+
+Company-owned assets with no explicit custodian default to the BAM stock custodian. Chunk 5 bootstraps that role from the active `vanguard` account when present; administrators can change the default under **Administration → BAM automation**. Existing assets that already have a custodian are not overwritten by the migration.
+
+Normal BAM request submission is policy-driven. When automatic approval is enabled, BAM immediately attempts to satisfy each requested resource. An eligible asset is reserved automatically; when the requested window is active today and automatic transfer is enabled, BAM also creates the checkout and changes custody to the requester. If no eligible asset is available, the requirement enters the BAM waitlist rather than creating a SHIT ticket. Future reservations remain reservations until their window is active; `process_bam_automation` performs scheduled/catch-up transfers and the Windows launcher runs one pulse at startup.
+
+From **BAM → Active Checkouts → My checkouts**, the current custodian can release an asset without administrative access. A good-condition release returns the asset to stock and may automatically promote and issue the next active queued request. Reporting damage, a missing accessory, a minor issue, or another attention condition places the asset on an allocation hold and prevents automatic reassignment until the hold is cleared.
+
+Managers retain manual controls. They may choose a specific alternate asset, allocate an asset that has automatic allocation disabled, release reservations, perform direct handoffs, or clear/set an allocation hold. A hard allocation hold remains authoritative even when automation is otherwise enabled.
+
+BAM automation can be disabled independently for request approval and custody transfer. Automatic actions use the configured automation actor (Vanguard by default when available) and write the same BAM request/asset history used by manual operations, with automation metadata recorded on generated events.
