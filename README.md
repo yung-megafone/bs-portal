@@ -4,7 +4,7 @@ Internal operations platform for B.S. Supply Co.
 
 B.S. Portal is an actively developed Django modular monolith for internal business operations. The project uses MySQL/InnoDB as its primary datastore and server-rendered Django templates rather than a separate frontend application.
 
-The portal is beyond the original foundation-only stage: identity, departments, BAM asset management, SHIT ticketing, and Timeclock workflows are implemented and usable. It remains **alpha software** while authorization, audit enforcement, backup/restore, security hardening, and additional operational modules are still being developed and reviewed.
+The portal is beyond the original foundation-only stage: identity, departments, BAM asset management, SHIT ticketing, and Timeclock workflows are implemented and usable. It remains **alpha software** while authorization, audit enforcement, recovery drills, security hardening, and additional operational modules are still being developed and reviewed.
 
 The current application release is **v0.2.0-alpha**. Human-facing release metadata is defined in `portal/apps/core/version.py` so the UI and tests use one version source of truth.
 
@@ -48,6 +48,15 @@ The current application release is **v0.2.0-alpha**. Human-facing release metada
 - Automatic approval, automatic checkout / transfer, automatic waitlist promotion, automatic transfer-on-release, equivalent substitution, and the automation audit actor are administrator-configurable.
 - Individual assets can opt out of automatic allocation or be placed on an explicit allocation hold while remaining available for deliberate manager action when policy permits.
 - `process_bam_automation` provides an idempotent catch-up pulse for due reservations and queue reconciliation; the Windows launcher runs a safe pulse after schema checks.
+
+### Portable backup and restore
+
+- Superusers now have an in-app **Backup & restore** workspace that exports portable `.bsbackup` archives and restores them into the configured MySQL database.
+- Portable backups contain a transaction-consistent MySQL dump, BSP version/integrity metadata, and optionally the uploaded-media tree used by BAM evidence and SHIT attachments. Database credentials, Django secret keys, DPAPI material, logs, and installer configuration are intentionally excluded.
+- Restore validates the archive, rejects backups created by a newer BSP version, creates a fresh pre-restore safety backup, replaces the current schema, imports the source data, and runs the migration set bundled with the receiving installation.
+- If restore fails after replacement begins, BSP attempts to roll the previous database/media state back automatically from the safety backup.
+- The packaged Windows first-run screen can restore a development/server `.bsbackup` directly before an initial administrator is created, which provides the intended dev → executable migration path.
+- CLI equivalents are available through `export_portal_backup` and `import_portal_backup` for scripted or recovery-oriented workflows.
 
 ### Operator QoL, privacy, and auditability
 
@@ -145,6 +154,7 @@ where `HHHHHH` is a six-character uppercase hexadecimal suffix protected by a da
 - cPanel / Passenger staging entry point
 - service-layer business logic
 - global toast notifications for Django success/warning/error messages
+- superuser-only portable backup/restore with optional media transport and pre-restore safety copies
 - database constraints for important invariants
 - automated tests for core and operational behavior
 
@@ -179,9 +189,9 @@ For source-based deployments, secrets and machine-specific configuration belong 
 BS-Portal-v0.2.0-alpha-Setup.exe
 ```
 
-Setup installs `BS-Portal.exe`, provisions an isolated localhost-only MySQL 8.4 LTS service named `BSPortalMySQL`, generates application credentials, protects local secrets with Windows DPAPI, takes a database backup before release migrations, and launches the portal on `http://127.0.0.1:8765/`. Python, Django, pip, Git, and a developer virtual environment are not required on the target workstation.
+Setup installs `BS-Portal.exe`, provisions an isolated localhost-only MySQL 8.4 LTS service named `BSPortalMySQL`, generates application credentials, protects local secrets with Windows DPAPI, takes a portable database-only safety backup before release migrations, and launches the portal on `http://127.0.0.1:8765/`. Python, Django, pip, Git, and a developer virtual environment are not required on the target workstation.
 
-The private packaged database listens on `127.0.0.1:33069` so it does not collide with a developer MySQL instance on the conventional `3306` port. Runtime data is kept outside the executable under `%ProgramData%\B.S. Supply Co\B.S. Portal`, including the authoritative MySQL data directory, uploads, application/setup logs, backups, and protected runtime configuration. Uninstall intentionally preserves that ProgramData state for recovery/reinstallation.
+The private packaged database listens on `127.0.0.1:33069` so it does not collide with a developer MySQL instance on the conventional `3306` port. Runtime data is kept outside the executable under `%ProgramData%\B.S. Supply Co\B.S. Portal`, including the authoritative MySQL data directory, uploads, application/setup logs, backups, and protected runtime configuration. Uninstall intentionally preserves that ProgramData state for recovery/reinstallation. The first-run screen can import a portable `.bsbackup` directly, making a source-development database plus uploaded evidence/attachments portable into the executable build without recreating records manually.
 
 On a new database, the packaged app opens a localhost-only first-run page to create the initial administrator; the bootstrap route disables itself after the first account exists. The executable uses Waitress rather than Django's development server, WhiteNoise for static assets, and a small system-tray controller for opening the portal, viewing logs, or exiting the local server.
 
@@ -192,6 +202,28 @@ Build it on Windows with:
 ```
 
 The finished installer and checksum file are written under `release\windows\`. By default, Setup downloads pinned runtime dependencies directly from Oracle/Microsoft when needed; an optional offline dependency bundle can be produced with `-BundleDependencies` after reviewing third-party redistribution obligations. Dependency payloads are only embedded when that switch is explicitly used, even if cached vendor files remain from an earlier build. See [`packaging/windows/README.md`](packaging/windows/README.md) for the full build/runtime design.
+
+## Backup, restore, and dev → packaged migration
+
+Superusers can open **Account → Administration → Backup & restore**. For a portable copy, keep **Include uploaded files** enabled and create a `.bsbackup`. The archive can be moved to another BSP installation without carrying database passwords or machine-local secrets.
+
+For the specific dev → packaged test:
+
+1. In the development portal, export a `.bsbackup` with uploaded files enabled.
+2. Install `BS-Portal-v0.2.0-alpha-Setup.exe` on the target Windows machine.
+3. On the packaged first-run screen, choose **Restore portable backup** instead of creating a temporary administrator.
+4. Select the dev `.bsbackup`, type `RESTORE`, and restore it.
+5. BSP creates a safety backup of the fresh packaged database, imports the dev database/media, applies any receiving-version migrations, and then returns to login using the identities contained in the restored database.
+
+Equivalent source/maintenance commands are:
+
+```powershell
+.\.venv\Scripts\python.exe portal\manage.py export_portal_backup --settings=config.settings.local
+.\.venv\Scripts\python.exe portal\manage.py import_portal_backup .\path\to\backup.bsbackup --yes-really-restore --settings=config.settings.local
+```
+
+Use `--database-only` on export only when filesystem uploads are deliberately out of scope. A database-only restore leaves the receiving installation's existing media directory untouched, which can produce dangling file references if the source database refers to files that were not transported.
+
 
 ## Quick start — Windows
 
@@ -308,7 +340,7 @@ Major work still planned or incomplete includes:
 - rate limiting
 - database role separation
 - external/object-storage strategy where required
-- backup/export and restore tooling with tested recovery procedures
+- repeated backup/restore drills and documented disaster-recovery procedures
 - dependency and static-analysis review
 - threat modeling and broader security review
 - production deployment validation
