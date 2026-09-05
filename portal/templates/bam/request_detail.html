@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ asset_request.request_number }} — BAM{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/bam.css' %}">{% endblock %}
+{% block content %}
+<section class="hero compact-hero bam-request-header">
+    <div>
+        <p class="eyebrow">BAM · ASSET REQUEST</p>
+        <h1>{{ asset_request.request_number }}</h1>
+        <p>{{ asset_request.purpose }}</p>
+        <div class="bam-request-badges">
+            <span class="request-status {{ asset_request.status|lower|cut:'_' }}">{{ asset_request.get_status_display }}</span>
+            <span class="request-priority {{ asset_request.priority|lower|cut:'_' }}">{{ asset_request.get_priority_display }}</span>
+        </div>
+    </div>
+    <div class="bam-actions">
+        <a class="bam-secondary-button" href="{% url 'bam:checkout_list' %}">Active checkouts</a>
+        <a class="bam-secondary-button" href="{% url 'bam:request_list' %}">Request queue</a>
+    </div>
+</section>
+
+<div class="bam-request-summary">
+    <div><small>Requester</small><strong>{{ asset_request.requester }}</strong></div>
+    <div><small>Requested window</small><strong>{{ asset_request.requested_start }} → {{ asset_request.requested_end }}</strong></div>
+    <div><small>Desired completion</small><strong>{{ asset_request.desired_completion_date|default:"—" }}</strong></div>
+    <div><small>Supporting SHIT work</small>{% if visible_related_ticket %}<a class="mono" href="{% url 'shit:detail' visible_related_ticket.ticket_number %}">{{ visible_related_ticket.ticket_number }}</a>{% elif related_ticket_restricted %}<strong>Restricted reference</strong>{% else %}<strong>—</strong>{% endif %}</div>
+</div>
+
+{% if asset_request.justification %}<section class="card"><h2>Justification</h2><p class="prewrap">{{ asset_request.justification }}</p></section>{% endif %}
+
+<section class="card">
+    <div class="section-heading"><h2>Requested resources</h2><span class="muted">Reservation state is separate from custody</span></div>
+    <div class="bam-requirement-list">
+    {% for item in request_items %}
+        <article class="bam-requirement">
+            <div class="bam-requirement-head">
+                <div class="bam-requirement-title">
+                    <strong>{{ item.asset_type.name }}</strong>
+                    <span class="mono">{{ item.department.code }}/{{ item.asset_type.code }}</span>
+                </div>
+                <span class="request-status {{ item.status|lower }}">{{ item.get_status_display }}</span>
+            </div>
+            <div class="bam-requirement-grid">
+                <div><small>Preference</small><strong>{{ item.get_preference_mode_display }}</strong></div>
+                <div><small>Preferred asset</small>{% if item.preferred_asset %}<a class="mono" href="{% url 'bam:detail' item.preferred_asset.asset_id %}">{{ item.preferred_asset.asset_id }}</a>{% else %}<strong>Any suitable</strong>{% endif %}</div>
+                <div><small>Reserved asset</small>{% if item.allocated_asset %}<a class="mono" href="{% url 'bam:detail' item.allocated_asset.asset_id %}">{{ item.allocated_asset.asset_id }}</a>{% else %}<strong>—</strong>{% endif %}</div>
+                <div><small>Availability</small>
+                    {% if item.status == 'WAITLISTED' %}<strong>Queue #{{ item.waitlist_position_value|default:'?' }}</strong>
+                    {% elif item.status == 'ALLOCATED' %}<strong>Reserved</strong>
+                    {% elif item.status == 'CHECKED_OUT' %}<strong>Checked out</strong>
+                    {% elif item.status == 'RETURNED' %}<strong>Returned</strong>
+                    {% elif item.status == 'RELEASED' %}<strong>Reservation released</strong>
+                    {% else %}<strong>{{ item.eligible_count }} eligible now</strong>{% endif %}
+                </div>
+            </div>
+            {% if item.status == 'WAITLISTED' and item.waitlist_status_message %}
+            <p class="bam-queue-explanation muted">{{ item.waitlist_status_message }}</p>
+            {% endif %}
+            {% if item.checkout_record %}
+            <div class="bam-checkout-summary {% if item.checkout_record.is_overdue %}overdue{% endif %}">
+                <div><small>Custodian</small><strong>{{ item.checkout_record.custodian }}</strong></div>
+                <div><small>Checked out</small><strong>{{ item.checkout_record.checked_out_at }}</strong></div>
+                <div><small>Due</small><strong>{{ item.checkout_record.due_date }}</strong></div>
+                <div><small>Checkout</small>
+                    {% if item.checkout_record.returned_at %}
+                        <strong>Returned {{ item.checkout_record.returned_at }}</strong>
+                    {% elif item.checkout_record.is_overdue %}
+                        <strong class="bam-overdue">Overdue {{ item.checkout_record.overdue_days }} day{{ item.checkout_record.overdue_days|pluralize }}</strong>
+                    {% else %}
+                        <strong>Active</strong>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% if item.note %}<p class="muted">{{ item.note }}</p>{% endif %}
+
+            {% if item.status == 'PENDING' or item.status == 'WAITLISTED' %}
+                {% if asset_request.requester_id == user.id or item.user_can_manage %}
+                <form method="post" action="{% url 'bam:request_item_cancel' asset_request.request_number item.id %}" class="bam-inline-remove">
+                    {% csrf_token %}<input type="hidden" name="reason" value="Requirement removed from request"><button type="submit" class="link-button">Remove requirement</button>
+                </form>
+                {% endif %}
+            {% endif %}
+
+            {% if item.user_can_manage %}
+            <div class="bam-allocation-controls">
+                {% if item.status == 'PENDING' or item.status == 'WAITLISTED' %}
+                <form method="post" action="{% url 'bam:request_item_allocate' asset_request.request_number item.id %}">
+                    {% csrf_token %}
+                    <div>{{ item.allocation_form.allocated_asset.label_tag }}{{ item.allocation_form.allocated_asset }}<small>{{ item.allocation_form.allocated_asset.help_text }}</small></div>
+                    <button type="submit">Reserve / queue</button>
+                </form>
+                <form method="post" action="{% url 'bam:request_item_deny' asset_request.request_number item.id %}" class="bam-deny-item-form">
+                    {% csrf_token %}
+                    <div><label for="deny-reason-{{ item.id }}">Denial reason</label><input id="deny-reason-{{ item.id }}" name="reason" maxlength="240" placeholder="Why this requirement cannot be fulfilled"></div>
+                    <button type="submit" class="bam-danger">Deny requirement</button>
+                </form>
+                {% elif item.status == 'ALLOCATED' %}
+                <form method="post" action="{% url 'bam:request_item_checkout' asset_request.request_number item.id %}" class="bam-checkout-form">
+                    {% csrf_token %}
+                    <div><label for="checkout-note-{{ item.id }}">Checkout note</label><input id="checkout-note-{{ item.id }}" name="reason" maxlength="240" placeholder="Issued with charger, case, accessories…"></div>
+                    <button type="submit">Check out to {{ asset_request.requester }}</button>
+                </form>
+                <form method="post" action="{% url 'bam:request_item_release' asset_request.request_number item.id %}" class="bam-release-form">
+                    {% csrf_token %}
+                    <div><label for="release-reason-{{ item.id }}">Release reason</label><input id="release-reason-{{ item.id }}" type="text" name="reason" maxlength="240" placeholder="No longer needed, schedule changed…"></div>
+                    <button type="submit" class="bam-secondary-button">Release reservation</button>
+                </form>
+                {% elif item.status == 'CHECKED_OUT' %}
+                <form method="post" action="{% url 'bam:request_item_return' asset_request.request_number item.id %}" class="bam-return-form">
+                    {% csrf_token %}
+                    <div><label for="return-reason-{{ item.id }}">Return note</label><input id="return-reason-{{ item.id }}" name="reason" maxlength="240" placeholder="Returned complete, condition note, accessories…"></div>
+                    <button type="submit">Return asset</button>
+                </form>
+                {% if item.handoff_candidate_count %}
+                <form method="post" action="{% url 'bam:request_item_handoff' asset_request.request_number item.id %}" class="bam-handoff-form">
+                    {% csrf_token %}
+                    <div>{{ item.handoff_form.next_item.label_tag }}{{ item.handoff_form.next_item }}</div>
+                    <div><label for="handoff-reason-{{ item.id }}">Handoff note</label><input id="handoff-reason-{{ item.id }}" name="reason" maxlength="240" placeholder="Direct transfer condition / accessories"></div>
+                    <button type="submit" class="bam-secondary-button">Direct handoff</button>
+                </form>
+                {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </article>
+    {% empty %}<p class="muted">No asset requirements have been added.</p>{% endfor %}
+    </div>
+</section>
+
+{% if can_add_item %}
+<section class="card">
+    <details class="bam-add-requirement">
+        <summary>Add another asset requirement</summary>
+        <form method="post" action="{% url 'bam:request_item_add' asset_request.request_number %}">
+            {% csrf_token %}
+            {% for field in item_form %}
+                <div class="field {% if field.name == 'preference_mode' or field.name == 'note' %}span-all{% endif %}">
+                    <label{% if field.id_for_label %} for="{{ field.id_for_label }}"{% endif %}>{{ field.label }}</label>
+                    {% if field.name == 'preference_mode' %}<div class="bam-radio-list">{{ field }}</div>{% else %}{{ field }}{% endif %}
+                </div>
+            {% endfor %}
+            <div class="span-all"><button type="submit">Add requirement</button></div>
+        </form>
+    </details>
+</section>
+{% endif %}
+
+<section class="card">
+    <h2>Request actions</h2>
+    <div class="bam-request-actions">
+        {% if asset_request.status != 'CANCELLED' and asset_request.status != 'DENIED' and asset_request.status != 'COMPLETED' %}
+        {% if asset_request.requester_id == user.id or can_manage %}
+        <form method="post" action="{% url 'bam:request_cancel' asset_request.request_number %}">
+            {% csrf_token %}<input type="text" name="reason" maxlength="240" placeholder="Cancellation reason (optional)"><button type="submit" class="bam-danger">Cancel request</button>
+        </form>
+        {% endif %}
+        {% if can_manage %}
+        <form method="post" action="{% url 'bam:request_deny' asset_request.request_number %}">
+            {% csrf_token %}<input type="text" name="reason" maxlength="240" placeholder="Denial reason"><button type="submit" class="bam-danger">Deny</button>
+        </form>
+        <form method="post" action="{% url 'bam:request_complete' asset_request.request_number %}">
+            {% csrf_token %}<input type="text" name="reason" maxlength="240" placeholder="Completion note"><button type="submit">Complete</button>
+        </form>
+        {% endif %}
+        {% else %}<span class="muted">This request is closed.</span>{% endif %}
+    </div>
+</section>
+
+<section class="card">
+    <h2>Request history</h2>
+    <div class="timeline">
+    {% for event in events %}
+        <article><time>{{ event.occurred_at }}</time><strong>{{ event.get_event_type_display }}</strong><span>{{ event.summary }}</span><small>{{ event.actor }}</small></article>
+    {% empty %}<p class="muted">No request events.</p>{% endfor %}
+    </div>
+</section>
+{% endblock %}
