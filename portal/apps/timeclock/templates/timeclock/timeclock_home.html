@@ -7,14 +7,6 @@
     <p class="lede">Authenticated work-time record. No location, biometric, device fingerprint, or surveillance data is collected by this module.</p>
 </section>
 
-{% if messages %}
-<div class="stack">
-    {% for message in messages %}
-    <div class="card timeclock-message">{{ message }}</div>
-    {% endfor %}
-</div>
-{% endif %}
-
 <div class="timeclock-layout">
     <section class="card timeclock-status-card">
         <p class="eyebrow">CURRENT STATE</p>
