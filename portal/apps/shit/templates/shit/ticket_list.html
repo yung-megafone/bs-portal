@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="shit-workspace-header{% if view_mode == 'board' %} is-board{% endif %}">
+<section class="shit-workspace-header{% if view_mode == 'board' %} is-board{% endif %}" data-shit-workspace data-view-mode="{{ view_mode }}">
     <div class="shit-workspace-primary">
         <div class="shit-workspace-identity">
             <p class="eyebrow">SOFTWARE HELPDESK AND INTERNET TECHNOLOGY</p>
@@ -89,14 +89,17 @@
                         <div><dt>Age</dt><dd>{{ ticket.created_at|timesince }} ago</dd></div>
                     </dl>
 
-                    {% if ticket.related_asset or ticket.related_document %}
+                    {% with links=ticket.asset_links.all %}
+                    {% if links or ticket.related_document %}
                     <div class="shit-card-links">
-                        {% if ticket.related_asset %}
-                        <a class="mono" href="{% url 'bam:detail' ticket.related_asset.asset_id %}">{{ ticket.related_asset.asset_id }}</a>
-                        {% endif %}
+                        {% for link in links|slice:":2" %}
+                        <a class="mono" href="{% url 'bam:detail' link.asset.asset_id %}" title="{{ link.get_relationship_type_display }}">{{ link.asset.asset_id }}</a>
+                        {% endfor %}
+                        {% if links|length > 2 %}<span>{{ links|length }} assets</span>{% endif %}
                         {% if ticket.related_document %}<span class="mono">{{ ticket.related_document }}</span>{% endif %}
                     </div>
                     {% endif %}
+                    {% endwith %}
 
                     {% if ticket.board_can_manage %}
                     <details class="shit-board-actions">
@@ -157,6 +160,7 @@
                     <th>Title</th>
                     <th>Department</th>
                     <th>Assignee</th>
+                    <th>Assets</th>
                     <th>Updated</th>
                 </tr>
             </thead>
@@ -169,10 +173,16 @@
                     <td>{{ ticket.title }}</td>
                     <td>{% if ticket.assigned_department %}{{ ticket.assigned_department.code }}{% else %}—{% endif %}</td>
                     <td>{{ ticket.assigned_user|default:"—" }}</td>
+                    <td class="shit-list-assets">
+                        {% with links=ticket.asset_links.all %}
+                        {% for link in links|slice:":2" %}<a class="mono" href="{% url 'bam:detail' link.asset.asset_id %}" title="{{ link.get_relationship_type_display }}">{{ link.asset.asset_id }}</a>{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}
+                        {% if links|length > 2 %}<small class="muted">{{ links|length }} total</small>{% endif %}
+                        {% endwith %}
+                    </td>
                     <td>{{ ticket.updated_at|date:"Y-m-d H:i" }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="muted">No tickets in this view.</td></tr>
+                <tr><td colspan="8" class="muted">No tickets in this view.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
