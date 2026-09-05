@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}BAM — B.S. Portal{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/bam.css' %}">{% endblock %}
 {% block content %}
 <section class="hero compact-hero">
     <p class="eyebrow">B.S. ASSET MANAGEMENT</p>
@@ -8,7 +10,10 @@
             <h1>BAM</h1>
             <p>Authoritative operational asset register.</p>
         </div>
-        <a class="button" href="{% url 'bam:create' %}">Register asset</a>
+        <div class="bam-actions">
+            <a class="bam-secondary-button" href="{% url 'bam:request_list' %}">Asset requests{% if my_open_requests %} · {{ my_open_requests }} open{% endif %}</a>
+            <a class="button" href="{% url 'bam:create' %}">Register asset</a>
+        </div>
     </div>
 </section>
 
