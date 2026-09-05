@@ -14,6 +14,7 @@ hiddenimports = [
     "pystray._win32",
 ]
 for package in (
+    "apps.core.management.commands",
     "apps.identity.migrations",
     "apps.departments.migrations",
     "apps.bam.migrations",
