@@ -2,68 +2,105 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from apps.core.browser_preferences import get_preference, set_preference_cookie
+from apps.bam.permissions import can_view_asset_request
+
 from .forms import (
+    TicketAssetLinkEditForm,
+    TicketAssetLinkForm,
     TicketAttachmentForm,
     TicketBoardMoveForm,
     TicketCommentForm,
     TicketCreateForm,
     TicketManageForm,
 )
-from .models import Ticket, TicketComment
-from .permissions import can_manage_ticket, can_view_ticket
+from .models import Ticket, TicketAssetLink, TicketComment
+from .permissions import can_manage_ticket, can_view_ticket, filter_visible_tickets
 from .services import (
     add_attachment,
     add_comment,
+    add_ticket_asset_link,
     create_ticket,
     move_ticket_on_board,
+    remove_ticket_asset_link,
     update_ticket,
+    update_ticket_asset_link,
 )
+
+
+SHIT_VIEW_PREFERENCE = "shit-view"
+SHIT_DETAIL_DENSITY_PREFERENCE = "shit-detail-density"
+SHIT_VIEW_MODES = {"list", "board"}
+SHIT_DETAIL_DENSITIES = {"dense", "compact"}
 
 
 TICKET_SELECT_RELATED = (
     "requester",
     "assigned_department",
     "assigned_user",
-    "related_asset",
-    "related_asset__department",
-    "related_asset__asset_type",
-    "related_asset__status",
-    "related_asset__current_custodian",
+)
+
+TICKET_ASSET_LINKS_PREFETCH = Prefetch(
+    "asset_links",
+    queryset=TicketAssetLink.objects.select_related(
+        "asset",
+        "asset__department",
+        "asset__asset_type",
+        "asset__status",
+        "asset__current_custodian",
+        "created_by",
+    ).order_by("created_at"),
 )
 
 
-def _visible_tickets(user):
-    qs = Ticket.objects.select_related(*TICKET_SELECT_RELATED)
-    if user.is_staff or user.is_superuser:
-        return qs
-    department_ids = user.department_memberships.filter(is_active=True).values_list(
-        "department_id",
-        flat=True,
+def _ticket_queryset():
+    return Ticket.objects.select_related(*TICKET_SELECT_RELATED).prefetch_related(
+        TICKET_ASSET_LINKS_PREFETCH
     )
-    return qs.filter(
-        Q(requester=user)
-        | Q(assigned_user=user)
-        | Q(assigned_department_id__in=department_ids)
-    ).distinct()
+
+
+def _visible_tickets(user):
+    return filter_visible_tickets(_ticket_queryset(), user)
 
 
 def _is_ajax(request):
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
+def _manage_ticket_or_forbidden(request, ticket_number):
+    ticket = get_object_or_404(_ticket_queryset(), ticket_number=ticket_number)
+    if not can_manage_ticket(request.user, ticket):
+        return ticket, HttpResponseForbidden(
+            "You do not have permission to manage this ticket."
+        )
+    return ticket, None
+
+
 @login_required
 def ticket_list(request):
     scope = request.GET.get("scope", "mine")
     query = request.GET.get("q", "").strip()
-    view_mode = request.GET.get("view", "list")
-    if view_mode not in {"list", "board"}:
-        view_mode = "list"
+
+    requested_view_mode = request.GET.get("view")
+    if requested_view_mode in SHIT_VIEW_MODES:
+        view_mode = requested_view_mode
+    else:
+        # Board is the default for a browser with no saved preference. An
+        # explicit List/Board selection is persisted client-side and mirrored
+        # in a non-sensitive preference cookie so the server can render the
+        # correct view immediately on the next visit.
+        view_mode = get_preference(
+            request,
+            SHIT_VIEW_PREFERENCE,
+            allowed=SHIT_VIEW_MODES,
+            default="board",
+        )
 
     active_department_ids = set(
         request.user.department_memberships.filter(is_active=True).values_list(
@@ -93,8 +130,10 @@ def ticket_list(request):
             | Q(title__icontains=query)
             | Q(description__icontains=query)
             | Q(related_document__icontains=query)
-            | Q(related_asset__asset_id__icontains=query)
-        )
+            | Q(asset_links__asset__asset_id__icontains=query)
+            | Q(asset_links__asset__manufacturer__icontains=query)
+            | Q(asset_links__asset__model__icontains=query)
+        ).distinct()
 
     context = {
         "scope": scope,
@@ -128,7 +167,15 @@ def ticket_list(request):
     else:
         context["tickets"] = tickets[:500]
 
-    return render(request, "shit/ticket_list.html", context)
+    response = render(request, "shit/ticket_list.html", context)
+    if requested_view_mode in SHIT_VIEW_MODES:
+        set_preference_cookie(
+            response,
+            request,
+            SHIT_VIEW_PREFERENCE,
+            requested_view_mode,
+        )
+    return response
 
 
 @login_required
@@ -138,18 +185,14 @@ def ticket_create(request):
         if form.is_valid():
             ticket = create_ticket(
                 actor=request.user,
-                **{
-                    key: form.cleaned_data[key]
-                    for key in [
-                        "title",
-                        "description",
-                        "ticket_type",
-                        "severity",
-                        "assigned_department",
-                        "related_asset",
-                        "related_document",
-                    ]
-                },
+                title=form.cleaned_data["title"],
+                description=form.cleaned_data["description"],
+                ticket_type=form.cleaned_data["ticket_type"],
+                severity=form.cleaned_data["severity"],
+                assigned_department=form.cleaned_data["assigned_department"],
+                related_assets=form.cleaned_data["related_assets"],
+                asset_relationship=form.cleaned_data["asset_relationship"],
+                related_document=form.cleaned_data["related_document"],
             )
             if form.cleaned_data.get("attachment"):
                 add_attachment(
@@ -167,7 +210,7 @@ def ticket_create(request):
 @login_required
 def ticket_detail(request, ticket_number):
     ticket = get_object_or_404(
-        Ticket.objects.select_related(*TICKET_SELECT_RELATED),
+        _ticket_queryset(),
         ticket_number=ticket_number,
     )
     if not can_view_ticket(request.user, ticket):
@@ -176,17 +219,38 @@ def ticket_detail(request, ticket_number):
     comments = ticket.comments.select_related("author")
     if not manage:
         comments = comments.filter(visibility=TicketComment.Visibility.PUBLIC)
+
+    asset_links = list(ticket.asset_links.all())
+    visible_asset_requests = [
+        asset_request
+        for asset_request in ticket.asset_requests.select_related("requester").prefetch_related(
+            "items__department", "items__asset_type", "items__preferred_asset", "items__allocated_asset"
+        ).order_by("-created_at")[:100]
+        if can_view_asset_request(request.user, asset_request)
+    ]
     return render(
         request,
         "shit/ticket_detail.html",
         {
             "ticket": ticket,
+            "asset_links": asset_links,
+            "asset_link_count": len(asset_links),
+            "asset_requests": visible_asset_requests,
+            "asset_request_count": len(visible_asset_requests),
             "can_manage": manage,
             "comments": comments,
             "events": ticket.events.select_related("actor")[:200] if manage else [],
             "attachments": ticket.attachments.select_related("uploaded_by")[:100],
             "comment_form": TicketCommentForm(),
             "attachment_form": TicketAttachmentForm(),
+            "asset_link_form": TicketAssetLinkForm(ticket=ticket) if manage else None,
+            "asset_relationship_choices": TicketAssetLink.RelationshipType.choices,
+            "detail_density_preference": get_preference(
+                request,
+                SHIT_DETAIL_DENSITY_PREFERENCE,
+                allowed=SHIT_DETAIL_DENSITIES,
+                default="",
+            ),
             "manage_form": (
                 TicketManageForm(
                     initial={
@@ -194,7 +258,6 @@ def ticket_detail(request, ticket_number):
                         "severity": ticket.severity,
                         "assigned_department": ticket.assigned_department,
                         "assigned_user": ticket.assigned_user,
-                        "related_asset": ticket.related_asset,
                         "related_document": ticket.related_document,
                     }
                 )
@@ -207,16 +270,90 @@ def ticket_detail(request, ticket_number):
 
 @login_required
 def ticket_manage(request, ticket_number):
-    ticket = get_object_or_404(Ticket, ticket_number=ticket_number)
-    if not can_manage_ticket(request.user, ticket):
-        return HttpResponseForbidden(
-            "You do not have permission to manage this ticket."
-        )
+    ticket, forbidden = _manage_ticket_or_forbidden(request, ticket_number)
+    if forbidden:
+        return forbidden
     if request.method == "POST":
         form = TicketManageForm(request.POST)
         if form.is_valid():
             update_ticket(ticket=ticket, actor=request.user, **form.cleaned_data)
             messages.success(request, "Ticket updated.")
+        else:
+            messages.error(request, "Ticket update was not valid.")
+    return redirect("shit:detail", ticket_number=ticket.ticket_number)
+
+
+@login_required
+@require_POST
+def ticket_asset_add(request, ticket_number):
+    ticket, forbidden = _manage_ticket_or_forbidden(request, ticket_number)
+    if forbidden:
+        return forbidden
+
+    form = TicketAssetLinkForm(request.POST, ticket=ticket)
+    if form.is_valid():
+        try:
+            add_ticket_asset_link(
+                ticket=ticket,
+                actor=request.user,
+                **form.cleaned_data,
+            )
+            messages.success(
+                request,
+                f"{form.cleaned_data['asset'].asset_id} linked to the ticket.",
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+    else:
+        messages.error(request, "The asset relationship was not valid.")
+    return redirect("shit:detail", ticket_number=ticket.ticket_number)
+
+
+@login_required
+@require_POST
+def ticket_asset_update(request, ticket_number, link_id):
+    ticket, forbidden = _manage_ticket_or_forbidden(request, ticket_number)
+    if forbidden:
+        return forbidden
+    link = get_object_or_404(
+        TicketAssetLink.objects.select_related("asset"),
+        pk=link_id,
+        ticket=ticket,
+    )
+    form = TicketAssetLinkEditForm(request.POST)
+    if form.is_valid():
+        try:
+            update_ticket_asset_link(
+                ticket=ticket,
+                link=link,
+                actor=request.user,
+                **form.cleaned_data,
+            )
+            messages.success(request, f"{link.asset.asset_id} relationship updated.")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+    else:
+        messages.error(request, "The asset relationship update was not valid.")
+    return redirect("shit:detail", ticket_number=ticket.ticket_number)
+
+
+@login_required
+@require_POST
+def ticket_asset_remove(request, ticket_number, link_id):
+    ticket, forbidden = _manage_ticket_or_forbidden(request, ticket_number)
+    if forbidden:
+        return forbidden
+    link = get_object_or_404(
+        TicketAssetLink.objects.select_related("asset"),
+        pk=link_id,
+        ticket=ticket,
+    )
+    asset_id = link.asset.asset_id
+    try:
+        remove_ticket_asset_link(ticket=ticket, link=link, actor=request.user)
+        messages.success(request, f"{asset_id} unlinked from the ticket.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
     return redirect("shit:detail", ticket_number=ticket.ticket_number)
 
 
@@ -227,7 +364,6 @@ def ticket_board_move(request, ticket_number):
         Ticket.objects.select_related(
             "assigned_department",
             "assigned_user",
-            "related_asset",
         ),
         ticket_number=ticket_number,
     )
