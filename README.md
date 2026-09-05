@@ -67,11 +67,18 @@ The current application release is **v0.2.0-alpha**. Human-facing release metada
 
 ## Documentation
 
-- [B.S. Portal Operator Guide](docs/user-guide.md) — illustrated day-to-day use of Dashboard, Departments, BAM, SHIT, Timeclock, and the current admin/back-office view.
-- [Documentation index](docs/README.md) — operator, development, architecture, ADR, privacy, and security documentation.
-- [Privacy Policy](PRIVACY.md) — privacy-first design principles, data handling, retention, and self-hosting considerations.
-- [Security Policy](SECURITY.md) — alpha security posture, reporting guidance, deployment baseline, and planned hardening.
-- In-app information pages — `/about/`, `/privacy/`, `/security/`, and `/license/` expose the current version, credits, policies, and MIT license without requiring authentication.
+- [Documentation index](docs/README.md) — complete v0.2.0-alpha documentation organized by operator, administrator, deployment, recovery, and developer tasks.
+- [Operator Guide](docs/user-guide.md) — day-to-day Dashboard, Departments, BAM, SHIT, Timeclock, preferences, and permissions.
+- [BAM Guide](docs/bam-guide.md) — asset registration, BAMR allocation modes, Vanguard/default custody, waitlists, checkout, release, handoff, and automation.
+- [SHIT Guide](docs/shit-guide.md) — Board/List operation, multi-asset links, comments/attachments, permissions, and queue behavior.
+- [Administration Guide](docs/administration.md) — identities, departments, Django Admin, BAM automation policy, and operational controls.
+- [Backup & Restore](docs/backup-restore.md) — `.bsbackup`, recovery, and dev → packaged migration.
+- [Windows Packaged Release](docs/windows-release.md) — Setup EXE, private MySQL, ProgramData, maintenance, build, and repair.
+- [Troubleshooting](docs/troubleshooting.md) — migrations, BAM queue diagnostics, backup/restore, packaged runtime, and test failures.
+- [Operations & Command Reference](docs/operations-reference.md) — management commands, URLs, build and maintenance commands.
+- [v0.2.0-alpha Release Notes](docs/release-notes/v0.2.0-alpha.md).
+- [Privacy Policy](PRIVACY.md), [Security Policy](SECURITY.md), and [MIT License](LICENSE).
+- In-app information pages — `/about/`, `/privacy/`, `/security/`, and `/license/`.
 
 ## Current modules
 
