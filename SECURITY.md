@@ -181,3 +181,12 @@ The project is distributed under the license in [`LICENSE`](LICENSE) and is prov
 ### BAM automation controls
 
 BAM automatic approval and custody transfer are policy-controlled and can be disabled independently by administrators. Automatic allocation still evaluates reservation conflicts, asset lifecycle state, allocation holds, per-asset automation opt-out, requested preference mode, and stock custody before acting. Explicit manager selection remains a separate manual override path. Automatic actions are recorded in BAM audit/event history with an automation marker and a configured audit actor.
+
+## Portable backup and restore
+
+- The in-app backup/restore workspace is restricted to Django superusers because a portable backup can contain essentially the complete operational datastore.
+- `.bsbackup` archives never intentionally include database credentials, Django secret keys, DPAPI-protected runtime material, MySQL root recovery credentials, or logs.
+- Restore validates archive paths, rejects symlink/traversal members, verifies the database SQL SHA-256, refuses known server-level administration statements, and blocks backups created by a newer BSP release.
+- A new safety backup is created before destructive restore work begins. BSP attempts automatic rollback if restore fails after replacement starts.
+- Backup validation is a guardrail, not a substitute for source trust. Only restore archives you control or have independently verified; a database restore necessarily executes SQL against the BSP database with application-database privileges.
+- Portable backups and pre-restore safety copies should be treated as sensitive operational data and protected accordingly.
