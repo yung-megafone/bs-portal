@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Backup & restore — B.S. Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/data-management.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="data-shell">
+    <header class="data-hero">
+        <div>
+            <span class="eyebrow">Administration · Data portability</span>
+            <h1>Backup & restore</h1>
+            <p class="lede">
+                Export a portable B.S. Portal backup from one installation and restore it into another.
+                Database credentials are never included in the archive.
+            </p>
+        </div>
+        <div class="data-runtime-card">
+            <span>Database</span>
+            <strong>{{ database_name }}</strong>
+            <small>{% if desktop_mode %}Packaged Windows runtime{% else %}Development / server runtime{% endif %}</small>
+        </div>
+    </header>
+
+    <div class="data-grid">
+        <section class="card data-card">
+            <span class="data-kicker">Export</span>
+            <h2>Create portable backup</h2>
+            <p>
+                Produces a <code>.bsbackup</code> archive containing a transaction-consistent MySQL dump and a manifest with integrity metadata.
+            </p>
+            <form method="post" action="{% url 'export_portal_backup' %}" class="stack-form">
+                {% csrf_token %}
+                <label class="data-checkbox">
+                    {{ export_form.include_media }}
+                    <span>
+                        <strong>{{ export_form.include_media.label }}</strong>
+                        <small>{{ export_form.include_media.help_text }}</small>
+                    </span>
+                </label>
+                <button type="submit">Create & download backup</button>
+            </form>
+            <p class="data-note">
+                For moving a development database into the packaged application, leave uploaded files enabled so BAM evidence and SHIT attachments travel with their database records.
+            </p>
+        </section>
+
+        <section class="card data-card data-danger-card">
+            <span class="data-kicker">Restore</span>
+            <h2>Import portable backup</h2>
+            <p>
+                Restoring replaces the configured B.S. Portal database. A fresh safety backup of the current state is created automatically before anything is replaced.
+            </p>
+            <form method="post" enctype="multipart/form-data" action="{% url 'import_portal_backup' %}" class="stack-form">
+                {% csrf_token %}
+                {{ import_form.as_p }}
+                <button type="submit" class="danger-button">Validate & restore</button>
+            </form>
+            <p class="data-note">
+                Backups from a newer BSP version are refused. Backups from the same or an older version are restored and then brought forward with the migration set bundled with this installation.
+            </p>
+        </section>
+    </div>
+
+    <section class="card data-card data-wide-card">
+        <div class="section-heading">
+            <div>
+                <span class="data-kicker">Local safety copies</span>
+                <h2>Recent backups</h2>
+            </div>
+            <span class="muted">{{ saved_backups|length }} shown</span>
+        </div>
+        {% if saved_backups %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Backup</th><th>Created</th><th>Size</th><th></th></tr>
+                </thead>
+                <tbody>
+                {% for backup in saved_backups %}
+                    <tr>
+                        <td class="mono">{{ backup.name }}</td>
+                        <td>{{ backup.modified|date:"Y-m-d H:i:s T" }}</td>
+                        <td>{{ backup.size|filesizeformat }}</td>
+                        <td><a href="{% url 'download_saved_backup' backup.name %}">Download</a></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="muted">No portable backups have been created on this installation yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="card data-card data-wide-card">
+        <span class="data-kicker">What moves</span>
+        <h2>Portable backup contents</h2>
+        <div class="data-facts">
+            <div><strong>Database</strong><span>Users, departments, BAM, SHIT, Timeclock, histories, requests, checkouts, migrations, and settings stored in MySQL.</span></div>
+            <div><strong>Uploads</strong><span>Optional media payload for BAM evidence, SHIT attachments, and other files stored under <code>{{ media_root }}</code>.</span></div>
+            <div><strong>Excluded</strong><span>Database passwords, Django secret keys, Windows DPAPI material, installer runtime configuration, logs, and MySQL server credentials.</span></div>
+        </div>
+    </section>
+</section>
+{% endblock %}
