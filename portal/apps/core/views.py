@@ -39,14 +39,18 @@ def license_info(request):
 
 @login_required
 def dashboard(request):
-    from apps.bam.models import Asset
+    from apps.bam.models import Asset, AssetCheckout, AssetRequest
     from apps.shit.models import Ticket
     from apps.timeclock.services import get_clock_state
 
     memberships = request.user.department_memberships.select_related("department")
     bam_summary = {
         "total": Asset.objects.count(),
-        "in_custody": Asset.objects.filter(current_custodian__isnull=False).count(),
+        "active_checkouts": AssetCheckout.objects.filter(returned_at__isnull=True).count(),
+        "my_checkouts": AssetCheckout.objects.filter(custodian=request.user, returned_at__isnull=True).count(),
+        "my_open_requests": AssetRequest.objects.filter(requester=request.user).exclude(
+            status__in=[AssetRequest.Status.CANCELLED, AssetRequest.Status.DENIED, AssetRequest.Status.COMPLETED]
+        ).count(),
     }
     shit_summary = {
         "open": Ticket.objects.exclude(
