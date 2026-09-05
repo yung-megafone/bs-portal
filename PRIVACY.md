@@ -49,9 +49,10 @@ BAM may store operational information such as:
 - acquisition/retirement information;
 - asset notes;
 - evidence files and associated metadata;
-- custody, lifecycle, and asset event history.
+- custody, lifecycle, and asset event history;
+- asset-use requests, including requester identity, requested date windows, purpose/justification, optional related SHIT work, preferred assets, waitlist/reservation state, allocation history, reservation-backed checkout/return records, direct handoffs, and overdue state derived from the approved return window.
 
-Asset records can therefore associate a person with equipment they currently or previously held.
+Asset records can therefore associate a person with equipment they currently or previously held, as well as equipment they requested, reserved, checked out, returned, or received by direct handoff for operational work. BAM allocation/custody data is used to coordinate internal resources; it is not intended as employee-location or behavioral-surveillance data. An overdue flag means the approved request end date has passed while the checkout remains open; BSP does not infer physical location from that state.
 
 ### SHIT — Ticketing
 
@@ -83,7 +84,7 @@ The current Timeclock module is intentionally designed **not** to collect GPS/lo
 
 ### Session and security data
 
-BSP uses the cookies and request state needed for authenticated Django sessions and CSRF protection. These are functional/security mechanisms, not advertising cookies.
+BSP uses the cookies and request state needed for authenticated Django sessions and CSRF protection. These are functional/security mechanisms, not advertising cookies. BSP may also store non-sensitive interface preferences, such as theme and SHIT List/Board or Dense/Compact choices, in first-party browser storage and functional preference cookies so the interface can reopen in the operator's chosen presentation. These preferences are not used for authorization, advertising, or cross-site tracking.
 
 The application does not currently include a third-party analytics or advertising SDK. However, the web server, reverse proxy, hosting provider, database, operating system, or security tooling used by a particular deployment may produce technical logs such as IP addresses, timestamps, request paths, browser user-agent strings, error information, or authentication events. Those logs are controlled by the deployment operator and hosting configuration rather than by an application-level advertising profile.
 
@@ -167,3 +168,7 @@ Privacy behavior can change as new modules, integrations, storage systems, authe
 ## Contact
 
 For a deployed instance, privacy questions should be directed to the organization or administrator operating that instance. For the reference B.S. Supply Co. project, use a private contact method published by the repository owner rather than placing sensitive personal information in a public GitHub issue.
+
+### BAM allocation and release data
+
+The BAM allocation workflow stores requester identity, requested dates, asset preferences, reservation/check-out state, custody history, release condition, and optional release notes because those fields are required to operate and audit the equipment pool. Toast notifications are rendered from first-party Django message state and do not add third-party tracking or analytics.
