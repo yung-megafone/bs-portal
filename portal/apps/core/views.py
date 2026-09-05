@@ -1,12 +1,47 @@
 import os
 
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import JsonResponse
-from django.shortcuts import render
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, JsonResponse
+from django.shortcuts import redirect, render
 
+from apps.core.forms import DesktopInitialAdminForm
 from apps.core.version import RELEASE_CHANNEL, __version__
 
+
+
+def desktop_setup(request):
+    if not getattr(settings, "DESKTOP_MODE", False):
+        raise Http404
+
+    remote_addr = request.META.get("REMOTE_ADDR", "")
+    if remote_addr not in {"127.0.0.1", "::1"}:
+        raise PermissionDenied
+
+    User = get_user_model()
+    if User.objects.exists():
+        return redirect("login")
+
+    form = DesktopInitialAdminForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = User.objects.create_superuser(
+            username=form.cleaned_data["username"],
+            email=form.cleaned_data.get("email", ""),
+            password=form.cleaned_data["password1"],
+        )
+        display_name = form.cleaned_data.get("display_name", "").strip()
+        if hasattr(user, "display_name") and display_name:
+            user.display_name = display_name
+            user.save(update_fields=["display_name"])
+        login(request, user)
+        messages.success(request, "Initial administrator created. B.S. Portal is ready.")
+        return redirect("dashboard")
+
+    return render(request, "core/desktop_setup.html", {"form": form})
 
 def health(request):
     return JsonResponse({"status": "ok"})
