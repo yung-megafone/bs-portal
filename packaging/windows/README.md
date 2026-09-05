@@ -14,7 +14,7 @@ The release download is a single Setup EXE. Installed/runtime state is intention
 - `%ProgramFiles%\B.S. Supply Co\B.S. Portal\mysql\` — private MySQL runtime installed/configured by Setup.
 - `%ProgramData%\B.S. Supply Co\B.S. Portal\mysql-data\` — authoritative MySQL database files.
 - `%ProgramData%\B.S. Supply Co\B.S. Portal\media\` — BAM/SHIT uploaded files.
-- `%ProgramData%\B.S. Supply Co\B.S. Portal\backups\` — automatic pre-migration SQL backups.
+- `%ProgramData%\B.S. Supply Co\B.S. Portal\backups\` — automatic pre-migration `.bsbackup` safety copies plus user-created portable backup archives.
 - `%ProgramData%\B.S. Supply Co\B.S. Portal\logs\` — application/MySQL logs plus timestamped installer/bootstrap transcripts.
 - `%ProgramData%\B.S. Supply Co\B.S. Portal\runtime.json` — local application configuration. Application secrets are DPAPI-protected using LocalMachine scope.
 - `%ProgramData%\B.S. Supply Co\B.S. Portal\mysql-root.json` — DPAPI-protected MySQL root recovery secret readable only by SYSTEM/Administrators.
@@ -31,7 +31,7 @@ Setup requires elevation because it installs a Windows service. It:
 4. generates random MySQL and Django secrets;
 5. protects application secrets with Windows DPAPI;
 6. creates the `bsportal` database and `bsportal_app` database user;
-7. takes a SQL backup before applying the release migration set;
+7. takes a portable database-only safety backup before applying the release migration set;
 8. runs Django system checks;
 9. writes a setup transcript under the ProgramData logs directory;
 10. installs shortcuts and launches B.S. Portal.
@@ -42,7 +42,7 @@ Uninstall removes the executable/private MySQL service and binaries but intentio
 
 ## Runtime application
 
-`BS-Portal.exe` runs Django under Waitress on `127.0.0.1:8765`; it is not `runserver`. Static assets are served by WhiteNoise. A tray controller provides Open Portal, View Logs, and Exit actions. If another BSP instance is already listening, launching the EXE simply opens the existing portal.
+`BS-Portal.exe` runs Django under Waitress on `127.0.0.1:8765`; it is not `runserver`. Static assets are served by WhiteNoise. A tray controller provides Open Portal, Backup & restore, View Logs, and Exit actions. If another BSP instance is already listening, launching the EXE simply opens the existing portal.
 
 BAM automation receives one catch-up pulse at application startup. Ongoing automation remains driven by the application's existing event flows unless a separate scheduled pulse is configured later.
 
@@ -71,6 +71,19 @@ For an offline installer:
 
 That explicitly embeds MySQL and the VC++ redistributable into Setup. Cached files under `packaging/windows/vendor/` are ignored by normal builds unless `-BundleDependencies` is supplied, preventing accidental redistribution. Review third-party redistribution obligations before publishing that variant.
 
+## Portable backup / restore
+
+The packaged application exposes **Backup & restore** to BSP superusers. Its `.bsbackup` format is designed to move data between source/development and packaged installations:
+
+- MySQL schema/data is exported with `mysqldump` using the active application database credential.
+- BAM/SHIT uploaded media can be included in the same archive and is enabled by default in the UI.
+- Database passwords, Django secret keys, DPAPI blobs, MySQL root recovery material, logs, and runtime configuration are never exported.
+- Import validates the archive and SQL hash, creates a current-state safety backup, restores the database, then applies the migration set bundled with the receiving BSP version.
+- Backups created by a newer BSP version are refused by an older executable.
+- If the destination is a brand-new packaged install, the localhost-only `/setup/` page can restore the `.bsbackup` before an initial admin account is created.
+
+This is the preferred path for testing a migration from a dev database on port 3306 into the private packaged `BSPortalMySQL` service on port 33069.
+
 ## Maintenance CLI
 
 The packaged EXE exposes installer-oriented commands:
@@ -81,7 +94,12 @@ BS-Portal.exe --maintenance backup
 BS-Portal.exe --maintenance backup-and-migrate
 ```
 
-Normal users launch the EXE without arguments.
+Normal users launch the EXE without arguments. Portable backup management commands are also bundled into the executable's Django application and are available from source builds as:
+
+```powershell
+python portal/manage.py export_portal_backup --settings=config.settings.local
+python portal/manage.py import_portal_backup C:\path\backup.bsbackup --yes-really-restore --settings=config.settings.local
+```
 
 ## Code signing
 
