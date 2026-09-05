@@ -1,6 +1,6 @@
 [project]
 name = "bs-portal"
-version = "0.1.0-alpha.1"
+version = "0.2.0-alpha"
 description = "Internal B.S. Supply Co. operations platform"
 requires-python = ">=3.11,<3.12"
 dependencies = [
