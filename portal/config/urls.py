@@ -1,14 +1,15 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
-from apps.core.views import about, dashboard, health, license_info, privacy, security
+from apps.core.views import about, dashboard, desktop_setup, health, license_info, privacy, security
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
     path("health/", health, name="health"),
+    path("setup/", desktop_setup, name="desktop_setup"),
     path("about/", about, name="about"),
     path("privacy/", privacy, name="privacy"),
     path("security/", security, name="security"),
@@ -20,5 +21,15 @@ urlpatterns = [
     path("", dashboard, name="dashboard"),
 ]
 
-if settings.DEBUG:
+if getattr(settings, "DESKTOP_MODE", False):
+    from django.views.static import serve as media_serve
+
+    urlpatterns += [
+        re_path(
+            r"^media/(?P<path>.*)$",
+            media_serve,
+            {"document_root": settings.MEDIA_ROOT},
+        )
+    ]
+elif settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
