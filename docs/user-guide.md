@@ -1,84 +1,71 @@
-# B.S. Portal Operator Guide
+# B.S. Portal Operator Guide — v0.2.0-alpha
 
-This guide explains the day-to-day use of **B.S. Portal (BSP)**. It is written for people using the portal as an internal operations tool rather than for developers deploying or modifying the codebase.
+This guide covers ordinary day-to-day use of **B.S. Portal**. It deliberately separates operator workflows from administrator-only setup and developer commands. Detailed module guides are linked where a workflow becomes more involved.
 
-> **Alpha documentation:** BSP is still under active development. Screenshots and labels may change as modules are refined. Operational records and permissions remain authoritative even when the presentation changes.
+> BSP is still alpha software. Use the event/history views and verified backups as part of normal operational discipline; do not treat the current UI as the final production security boundary.
 
-## Contents
+## 1. Signing in and navigation
 
-- [Portal overview](#portal-overview)
-- [Dashboard](#dashboard)
-- [Departments](#departments)
-- [BAM — B.S. Asset Management](#bam--bs-asset-management)
-- [SHIT — Software Helpdesk and Internet Technology](#shit--software-helpdesk-and-internet-technology)
-- [Timeclock](#timeclock)
-- [Permissions and visibility](#permissions-and-visibility)
-- [Django administration](#django-administration)
-- [Common workflows](#common-workflows)
+A normal authenticated session exposes the primary modules:
 
-## Portal overview
+- **Dashboard** — personal and operational summary.
+- **Departments** — department directory.
+- **BAM** — assets, BAMR requests, queues, reservations, checkout/custody.
+- **SHIT** — operational tickets.
+- **Timeclock** — personal clock state and punch history.
 
-BSP is the authenticated internal operations portal for B.S. Supply Co. The primary navigation currently exposes:
+The account menu also contains appearance controls and links to **About**, **Privacy**, **Security**, and **License**. Staff/superusers may see additional administration links.
 
-- **Dashboard** — account, department, asset, ticket, and timeclock summaries.
-- **Departments** — the organizational units registered in BSP.
-- **BAM** — authoritative asset records, custody, evidence, and asset history.
-- **SHIT** — service/helpdesk tickets, operational queues, comments, attachments, and ticket history.
-- **Timeclock** — personal clock-in/clock-out state and punch history.
+### Browser preferences
 
-The account control at the right side of the navigation identifies the signed-in user. Access to operational pages requires authentication.
+The following non-sensitive UI preferences are stored in first-party browser storage and mirrored to a functional preference cookie where server-side first-render behavior is needed:
 
-### Account menu and About
+- theme;
+- SHIT List vs Board;
+- SHIT Dense vs Compact ticket-detail layout.
 
-Open the account control at the upper-right to access appearance controls and account actions. The **B.S. Portal** section also provides:
+A browser with no SHIT view preference opens **Board** by default. SHIT scope (`My tickets`, `Department queue`, `All tickets`) is intentionally not persisted in v0.2.0-alpha.
 
-- **About B.S. Portal** — current application version, alpha channel, credits, technology baseline, source repository, and MIT licensing information;
-- **Privacy** — the privacy-first data-handling policy;
-- **Security** — current alpha security posture, deployment boundaries, and vulnerability-reporting guidance.
-- **License** — the MIT license governing reuse, modification, and redistribution of BSP.
+### Toast notifications
 
-The About, Privacy, Security, and License pages are intentionally readable without authentication so the software's policies and terms can be inspected before signing in.
+Successful actions, warnings, validation failures, and errors appear as toast notifications in the upper-right of the portal. They dismiss automatically, can be closed manually, and pause while hovered. Error toasts remain longer than normal informational/success messages.
 
-## Dashboard
+These are **not** cross-device or background push notifications; they display when a portal request returns a Django message to the current browser.
 
-The Dashboard is the starting point for BSP. It summarizes the information most useful to the signed-in user:
+## 2. Dashboard
 
-- the currently authenticated identity;
-- active department memberships and membership roles;
-- total BAM asset count and the number currently assigned to custodians;
-- open SHIT tickets and tickets involving the current user;
+The Dashboard summarizes:
+
+- your authenticated identity;
+- active department memberships;
+- BAM asset/request/checkout counts;
+- open SHIT work and tickets involving you;
 - current Timeclock state.
 
-The BAM, SHIT, and Timeclock cards link directly into their respective modules. NSEC and PSOP may appear as planned/inactive modules while those workflows are still being implemented.
+Use the module cards as shortcuts into BAM, SHIT, and Timeclock.
 
 ![B.S. Portal dashboard](images/dashboard-home.png)
 
-*The Dashboard acts as the authenticated landing page and quick-launch surface for the live modules.*
+## 3. Departments
 
-## Departments
+The Departments page is the organizational directory. It displays department code, name, description, and active status.
 
-The **Departments** page is the portal's current organizational directory. Each entry shows:
+Membership is operationally important:
 
-- department code;
-- department name;
-- description, when defined;
-- active/inactive status.
-
-The current alpha page is primarily informational. Department creation and administrative maintenance are not exposed as ordinary operator controls on this screen.
-
-Department membership matters elsewhere in BSP. In particular, an active membership can determine which SHIT department queues a user can see and manage.
+- SHIT uses active department membership to determine ticket visibility and management scope;
+- BAM uses `Manager` and `Department administrator` memberships for department-scoped request/allocation authority.
 
 ![Departments directory](images/departments.png)
 
-*Departments are currently presented as a clean reference directory rather than a heavy administration console.*
+Department/user administration is covered in the [Administration Guide](administration.md).
 
-## BAM — B.S. Asset Management
+## 4. BAM — assets and resource requests
 
-BAM is the authoritative asset register. SHIT links to BAM records rather than copying asset data into tickets.
+BAM is the authoritative asset register. A SHIT ticket may reference an asset, but BAM remains the source of truth for the asset itself, its status, custody, evidence, reservations, and checkout history.
 
-### Finding an asset
+### Find an asset
 
-Open **BAM** from the navigation bar. The asset list supports search by:
+Open **BAM** and search by:
 
 - asset ID;
 - serial number;
@@ -86,379 +73,243 @@ Open **BAM** from the navigation bar. The asset list supports search by:
 - model;
 - notes.
 
-The table displays the asset's ID, type, owning department, manufacturer/model, lifecycle status, and current custodian. Select an asset ID to open the authoritative record.
-
 ![BAM asset list](images/bam-list.png)
 
-*The BAM list view is the main search/index surface for asset records.*
+### Register an asset
 
-### Registering an asset
+Use **Register asset**. The current form records:
 
-Use **Register asset** from the BAM page. Complete the intake form and commit the record.
+- department;
+- asset type;
+- lifecycle status;
+- ownership (`Company` or `Managed personal`);
+- manufacturer/model;
+- serial number;
+- optional explicit custodian;
+- acquisition date;
+- notes;
+- optional asset photo and serial evidence;
+- optional preferred 4-hex ID suffix.
 
-BAM generates the final asset identifier when the record is committed. If the form offers a preferred hexadecimal suffix, BSP will attempt to use it. If that suffix is already assigned, BAM selects another unused suffix rather than overwriting an existing identifier.
+Asset IDs use:
 
-An asset can also be registered with supporting evidence such as an asset photo or serial-number evidence where the intake form provides those fields.
+```text
+BS-{DEPARTMENT}-{TYPE}-{4HEX}
+```
+
+Example:
+
+```text
+BS-SR69-R-6969
+```
+
+If the preferred suffix is already occupied inside the same organization/department/type namespace, BAM retries using a cryptographically random 4-hex suffix. The final database uniqueness constraint is authoritative.
+
+For company-owned assets, leaving Custodian blank uses BAM's configured default stock custodian. If none is explicitly configured, BAM looks for an active account named `vanguard`.
 
 ### Asset record
 
-An asset record combines current state with append-oriented history. Depending on the record and your current alpha permissions, the page can include:
+An asset record can show:
 
-- asset type and department;
-- ownership;
-- lifecycle status;
-- manufacturer, model, and serial number;
+- identity/type/department/ownership/status;
+- manufacturer/model/serial;
 - current custodian;
 - acquisition/retirement dates;
-- notes;
-- evidence files and SHA-256 metadata;
+- automatic-allocation policy and allocation hold;
+- evidence and SHA-256 metadata;
+- current reservation/checkout state;
+- waitlist information visible to you;
+- SHIT references visible to you;
+- checkout history;
 - custody history;
 - asset event history.
 
-### Editing an asset
+Use **Edit details** for mutable descriptive fields. Asset ID, department, and asset type are intentionally not changed through the ordinary edit form in this alpha release.
 
-Use **Edit details** for mutable descriptive fields. In the current alpha workflow, the issued asset ID, department, and asset type are intentionally not edited through this form.
+### Request this asset
 
-### Changing lifecycle status
+Use **Request this asset** from an asset record when you need equipment for a project/work window. This creates a **BAMR**, not a SHIT ticket.
 
-Use **Change Status** on the asset record. Supply the new lifecycle status and a reason when required. The service records the change in asset history.
+A BAMR records:
 
-### Assigning custody
-
-Use **Assign Custody** to change the current custodian. Custody changes are retained in the custody history rather than replacing the historical record.
-
-### Evidence
-
-Use **Evidence** to attach supporting files to the asset. Evidence entries retain file metadata including the original filename, upload information, size, and SHA-256 digest.
-
-### Asset requests and reservations
-
-BAM includes a resource-request queue that is deliberately separate from SHIT. Use it when the work already exists and the remaining problem is **who gets which asset, and when**. A routine laptop/radio/SDR reservation should not become another operational helpdesk ticket merely to put somebody in line.
-
-Open **Asset requests** from BAM to view your own requests. Staff and department managers/administrators can also open the **Managed queue** for departments they are authorized to allocate.
-
-Each request records:
-
-- requester;
-- project/purpose and justification;
-- requested start/end dates;
-- optional desired project-completion date;
+- purpose;
 - optional related SHIT ticket;
-- one or more requested resource requirements;
-- reservation/waitlist state and request history.
+- BAM priority (`Normal`, `Time-sensitive`, `Critical dependency`);
+- requested start and end date;
+- optional desired project-completion date;
+- justification;
+- one or more resource requirements.
 
-Asset requests use identifiers in the form `BAMR-YY-HHHHHH`.
+BAM priority is independent from SHIT severity and does not automatically jump the queue.
 
-#### Request this asset
+For each requirement choose:
 
-From an individual BAM asset record, select **Request this asset**. BAM preselects the asset's department, type/class, and the asset itself as your preference. You then choose one of three allocation modes:
+- **Any suitable asset** — any eligible asset in the requested department + asset type may satisfy it.
+- **Prefer this asset; allow equivalent** — use the preferred unit if eligible; otherwise automation may substitute another eligible equivalent when policy allows.
+- **Require this exact asset** — no substitute; queue for that exact unit when unavailable.
 
-- **Any suitable asset** — you care about the resource class, not the exact unit.
-- **Prefer this asset; allow equivalent** — BAM should use the preferred unit when available, otherwise another eligible asset of the same department/type can satisfy the request.
-- **Require this exact asset** — no substitute is acceptable; if the unit is unavailable, the requirement remains on that asset's waitlist.
+If the requested asset/resource is available and automation is enabled, BAM can automatically reserve it and, when the requested window is active today, automatically check it out and change custody to the requester. If no eligible asset is available, the requirement enters the BAM queue.
 
-A request can contain multiple requirements. For example, one RF-development request can ask for a laptop, SDR, and radio while citing the SHIT ticket that the equipment supports. Add additional requirements from the request detail page rather than opening separate SHIT tickets.
+A BAM request may include several requirements so a single project can request, for example, a laptop + SDR + radio without creating several SHIT tickets.
 
-#### Reservation versus custody
+### Reservation, checkout, and custody are different
 
-A BAM reservation does **not** automatically change asset custody. The request queue answers who has an approved claim on a resource for a date window. BAM custody answers who physically holds or is responsible for the asset.
+- **Reservation** means the resource is committed for a date window.
+- **Checkout** means the asset has actually been issued.
+- **Custodian** is the account currently responsible for the asset.
 
-When an authorized department manager issues **Check out**, BSP creates a reservation-backed checkout record and transfers current custody to the requester. Returning the asset closes that checkout/custody assignment. If another approved reservation for the same asset is active or begins the next day, an authorized manager can use **Direct handoff** to transfer custody directly to the next requester without creating a fake overnight inventory gap.
+A future reservation does not claim the requester physically possesses the asset early. When an active reservation is checked out, the checkout workflow transfers custody.
 
-The asset lifecycle status is not silently changed merely because an allocation request is approved or checked out. Assets in non-allocatable states such as Repair, Lost, Retired, Disposed, or administratively Reserved are excluded from automatic equivalent selection.
+### Releasing your asset
 
-Open reservation-backed checkouts appear in **Active Checkouts**. A checkout becomes **Overdue** when its BAM request end date has passed and the checkout is still open. Overdue means the approved usage window has expired; it does not represent GPS or inferred physical-location tracking.
+If you are the current custodian of an active reservation-backed checkout, **My Checkouts** gives you a self-service release action. Choose the return condition:
 
-#### Waitlists and conflicts
+- Good / ready for next user;
+- Minor issue;
+- Damaged;
+- Missing accessory;
+- Needs attention.
 
-Reservation overlaps are checked on the server. If no eligible equivalent is available, or if an exact-required asset is unavailable, the requirement is placed in the BAM queue instead of modifying SHIT severity/status. Exact-asset requests receive a position in that unit's waitlist; class-based requests queue against the applicable department/type pool.
+A good release may automatically promote and transfer the asset to the next eligible request. If nobody is waiting, custody returns to the configured stock custodian (normally Vanguard).
 
-Department managers can reserve an explicit matching asset or let BAM choose according to the request preference. When BAM chooses among equivalent available units, it uses a deterministic least-recently-allocated policy rather than random selection.
+A non-good release places the asset on **allocation hold** and returns it to stock custody so it is not immediately reissued.
 
-When a reservation is released or a checked-out asset is returned, BAM re-evaluates compatible waitlisted requirements. Previously reviewed waitlisted items can be promoted automatically when the newly available asset satisfies their class/exact-asset rule and requested date window. A physically checked-out asset remains unavailable to new allocation even if its original reservation dates have already passed.
+For all BAM behavior, see the [BAM Guide](bam-guide.md).
 
-## SHIT — Software Helpdesk and Internet Technology
+## 5. SHIT — operational tickets
 
-SHIT is BSP's service-management and internal ticketing module. The List and Board interfaces operate on the **same Ticket records**; they are two views of the same workflow, not separate ticket systems.
+SHIT is for operational work, incidents, requests, changes, problems, documentation work, and similar tracked activity. Routine resource reservation belongs in BAMR rather than creating a second SHIT ticket solely to stand in line for equipment.
 
-### Ticket scopes
+### Ticket identifiers
 
-The ticket workspace provides three scope controls where permitted:
+Tickets use immutable identifiers:
 
-- **My tickets** — tickets requested by or directly assigned to you.
-- **Department queue** — tickets assigned to departments in which you have an active membership.
-- **All tickets** — global ticket visibility for staff/superuser accounts.
+```text
+SHIT-YY-HHHHHH
+```
 
-The search box can match ticket number, title, description, related PSOP/document reference, or any BAM asset linked to the ticket.
+where the final six characters are uppercase hexadecimal.
 
-### List versus Board
+### Create a ticket
 
-Use the **List / Board** control to choose the interface that fits the task. **Board is the default for a browser with no saved preference.** When you switch between Board and List, BSP remembers that browser preference for later visits.
+Use **Submit ticket** and provide:
 
-**List** is intended for search, filtering, auditing, and scanning large numbers of records.
-
-![SHIT list view (compact result set)](images/shit-list-compact.png)
-
-*List view with a small result set: useful for direct lookup and quick administrative review.*
-
-![SHIT list view (expanded result set)](images/shit-list-expanded.png)
-
-*List view with a larger result set: better for broad scanning, sorting, and auditing than a board layout.*
-
-**Board** is the operational queue: what is being worked, which state it is in, and its manual order within that state.
-
-![SHIT operational board view](images/shit-board-wide.png)
-
-*The Board view uses most of the available workstation width and preserves the portal's actual ticket statuses as columns.*
-
-The current board statuses are:
-
-1. New
-2. Acknowledged
-3. Assigned
-4. In Progress
-5. Waiting on Requester
-6. Waiting on Vendor
-7. Resolved
-8. Closed
-9. Cancelled
-
-### Board movement and queue order
-
-For tickets you are authorized to manage:
-
-- **horizontal movement** changes the ticket's real status;
-- **vertical movement** changes only its manual queue position within that status.
-
-Queue order and severity are independent. Moving a SEV-3 ticket lower in the queue does **not** turn it into a different severity.
-
-Board-driven status changes use the same backend ticket-update service as ordinary status changes. Status changes and queue reorders therefore remain part of ticket history rather than existing only in browser state.
-
-If drag/drop JavaScript is unavailable, the board still provides ordinary form controls for status movement and Up/Down queue ordering.
-
-### Creating a ticket
-
-Select **Submit ticket**. The create workbench collects the initial request information, including the fields supported by the current model:
-
-- summary/title;
+- title;
 - description;
-- ticket type/classification;
+- ticket type;
 - severity;
-- assigned department;
-- one or more related BAM assets, when applicable;
-- an initial relationship type for selected assets;
-- related PSOP/document reference;
-- initial attachment, when supplied.
+- optional destination department;
+- optional multiple related BAM assets;
+- one initial relationship type for those selected assets;
+- optional PSOP/document identifier;
+- optional initial attachment.
 
-New tickets use the existing creation workflow rather than bypassing it. The ticket begins in the normal initial status and assignment can subsequently be managed through the ticket record.
+Ticket types include Incident, Service request, Access request, Change request, Problem, PSOP/documentation, Feedback/note, and Other.
 
-When linking assets, search/select the existing BAM records. A ticket can reference multiple assets at once. The initial relationship type is applied to all assets chosen during creation and can later be refined per asset from the ticket detail page. Do not create duplicate asset information inside the ticket description merely to reproduce BAM fields.
+Severity supports `NONE` and `SEV-5` through `SEV-1`.
 
-### Ticket detail workbench
+### List and Board
 
-Open a ticket number or board card to reach the ticket detail page.
+SHIT supports:
 
-![SHIT ticket detail workbench](images/shit-ticket-detail.png)
+- **Board** — default for a new browser preference;
+- **List** — conventional searchable table.
 
-*The ticket detail workbench separates the request/thread/files/history from ticket context, BAM context, and management controls.*
+The Board contains all implemented ticket statuses:
 
-The current detail interface is organized around:
+- New;
+- Acknowledged;
+- Assigned;
+- In progress;
+- Waiting on requester;
+- Waiting on vendor;
+- Resolved;
+- Closed;
+- Cancelled.
 
-- **header summary** — ticket ID, title, severity, state, department, assignment and quick operational facts;
-- **Description** — the original request body;
-- **Conversation** — requester-visible comments and, for ticket managers, internal notes;
-- **Attachments** — files associated with the ticket, including recorded SHA-256 metadata;
-- **Event history** — operational/audit events for users allowed to manage the ticket;
-- **Ticket context** — type, status, severity, assignment, queue position and timestamps;
-- **BAM context** — all linked assets, their relationship types, optional relationship notes, and direct links to the authoritative BAM records;
-- **Manage ticket** — operational fields such as status, severity, department, assignee, and document reference; BAM relationships are managed in the adjacent asset panel.
+Horizontal movement changes the actual ticket status through the same service logic as the management form. Vertical movement changes **queue order only**; it does not change severity.
 
-The newest UI also provides **Dense / Compact** presentation controls in the detail header:
+![SHIT board](images/shit-board-wide.png)
 
-- **Dense** keeps the context, BAM, and management information expanded for wide workstation displays.
-- **Compact** converts the sidebar into collapsible sections and gives more space to the request/thread area.
+### Ticket scope
 
-BSP defaults toward Dense on wider displays and Compact on narrower desktop/tablet widths when no preference has been saved. Once the operator chooses **Dense** or **Compact**, BSP remembers that browser preference and keeps using it until another density is selected.
+- **My tickets** — tickets where you are requester or assigned user.
+- **Department queue** — tickets assigned to your active departments.
+- **All tickets** — available only to staff/superusers; non-staff requests for All fall back to My tickets.
 
-### Asset relationship types
+Search matches ticket number, title, description, related document, and linked BAM asset ID/manufacturer/model.
 
-SHIT can reference multiple BAM assets without changing BAM custody. Each link has one explicit operational relationship:
+### Multiple linked assets
 
-- **Related** — general context when no stronger meaning is required.
-- **Affected asset** — the asset experiencing the issue or change.
-- **Required for work** — the work depends on access to this asset, but the link itself is not a reservation.
-- **Test equipment** — equipment used to perform or validate the work.
-- **Replacement / alternate** — a substitute or alternate asset associated with the work.
-- **Supporting resource** — another asset that supports the work but is not the primary affected item.
+A ticket can reference several BAM assets. Relationship types are:
 
-Managers can add, change, or remove asset relationships from the ticket detail page. Those changes generate SHIT events. The important boundary is:
+- Related;
+- Affected asset;
+- Required for work;
+- Test equipment;
+- Replacement / alternate;
+- Supporting resource.
 
-> **Reference is not allocation.** Linking an asset to a ticket does not reserve it, check it out, or transfer custody. BAM allocation/request workflows are intentionally separate.
+A ticket↔asset link is informational/operational context. It does **not** reserve or check out the asset. Use the BAM request flow for actual allocation.
 
-Existing tickets that used the older single `related_asset` field are migrated into a normal **Related** asset link when migration `0004_ticket_asset_links` is applied.
+### Comments and attachments
 
-### Comments and internal notes
+Ticket viewers may add requester-visible comments and attachments. Only ticket managers/agents may add **Internal note** comments. Attachments store metadata including SHA-256.
 
-Any user who can view a ticket can add a requester-visible comment.
+`v0.2.0-alpha` does **not** automatically turn a typed asset/ticket ID inside comment prose into a relationship. Use the explicit asset relationship controls.
 
-Users with ticket-management permission can additionally mark an entry as an **internal** note. Internal notes are not shown to ordinary requester-only viewers.
+For all SHIT behavior, see the [SHIT Guide](shit-guide.md).
 
-### Attachments
+## 6. Timeclock
 
-Users who can view a ticket can attach files to it. Stored attachment records include file metadata such as the original filename, size, uploader, timestamp, and SHA-256 digest.
+Open **Timeclock** to see your effective clock state and recent punches.
 
-### Managing a ticket
+- You may clock only yourself in or out.
+- Duplicate consecutive states are rejected (for example, clocking in while already clocked in).
+- Original Punch rows are immutable.
+- Staff corrections are appended as separate correction records; the latest correction determines the effective punch type/time.
 
-If you have management permission, the **Manage ticket** section can update the fields exposed by the existing ticket-management form, including:
+![Timeclock](images/timeclock.png)
 
-- status;
-- severity;
-- assigned department;
-- assigned user;
-- BAM asset relationships (managed separately from the core ticket form);
-- related document / PSOP reference.
+See the [Timeclock Guide](timeclock-guide.md).
 
-Use these controls rather than attempting to encode workflow state in comments or ticket titles.
-
-Linked BAM assets can also expose **Request allocation** actions. Those create BAM resource requests with the SHIT ticket pre-referenced; they do not create child SHIT tickets or change the ticket's severity/queue position. Visible BAM requests supporting a ticket are linked back into the ticket detail view.
-
-## Timeclock
-
-Timeclock records authenticated work-time punches for the current user. The module intentionally does not use location, biometric, device-fingerprint, or surveillance data.
-
-![Timeclock main screen](images/timeclock.png)
-
-*Timeclock shows current state on the left and recent punches on the right.*
-
-### Clocking in
-
-Open **Timeclock** and check the **Current State** card. When clocked out, select **Clock in**. BSP records the punch and updates the current state.
-
-### Clocking out
-
-When currently clocked in, the same page displays the time at which the current work period began. Select **Clock out** to append the matching punch.
-
-### Punch history
-
-The Timeclock page shows recent punches with:
-
-- effective timestamp;
-- punch type;
-- source;
-- original/corrected record state.
-
-Corrections do not destroy the original punch. The effective value is derived from the original record plus append-only correction records.
-
-### Correcting a punch
-
-Punch correction is currently restricted to staff accounts. Staff can select **Correct** beside a punch, review the original record, provide the corrected type/time and a reason, and record the correction.
-
-The original punch remains preserved and the correction is added to the audit trail.
-
-## Permissions and visibility
-
-BSP is authenticated, but permissions are module-specific and still being hardened as part of the alpha.
+## 7. Permissions and visibility
 
 ### SHIT
 
-A ticket is currently viewable when a user is any of the following:
+Staff/superusers can see all tickets. Otherwise, you can see a ticket when you are:
 
-- staff or superuser;
-- the requester;
-- the directly assigned user;
-- an active member of the assigned department.
+- its requester;
+- its assigned user; or
+- an active member of its assigned department.
 
-Ticket-management permission is narrower. A requester does not gain management rights merely by having submitted the ticket. Management is currently available to:
+Management requires staff/superuser, assigned user, or active membership in the assigned department. Requester status alone does not grant ticket-management authority.
 
-- staff or superusers;
-- the directly assigned user;
-- active members of the assigned department.
+### BAM requests
 
-This distinction is why some users can participate in the conversation and add attachments without seeing ticket-management or internal-note controls.
+You may see your own BAMRs. Staff/superusers have global visibility. Department Managers/Department administrators can see/manage request requirements in departments they manage.
 
-### BAM
+Whole-request actions require authority across **every department represented in the request**. Item-level actions are department-scoped.
 
-The present BAM views are authenticated alpha workflows. Final production RBAC separation for asset registration, status, custody, evidence, and record maintenance remains part of the portal's hardening work.
+BAM/SHIT backlinks are permission-filtered; a visible asset or ticket does not automatically reveal a request/ticket that the same user cannot open.
 
-### Timeclock
+## 8. Backup & restore
 
-Users operate their own clock state and see their own recent punches. Punch correction is staff-only.
+Superusers can use **Account → Administration → Backup & restore** to create a `.bsbackup` containing the MySQL database and, by default, uploaded media.
 
-## Django administration
+For portable migration or disaster-recovery details, read [Backup & Restore](backup-restore.md) before importing anything.
 
-Django admin remains available for low-level administrative access and data maintenance. It is useful for development, seeding, inspection, and break-glass administration, but it is **not** the normal operator workflow for day-to-day BSP usage.
+## 9. Packaged Windows application
 
-![Django administration](images/django-admin.png)
+A packaged release runs locally at `http://127.0.0.1:8765/`, uses a private MySQL service on port `33069`, and keeps persistent state in ProgramData. The system tray provides:
 
-*Django admin exposes the underlying models directly and should generally be treated as an administrative back-office tool rather than the preferred operational interface.*
+- Open B.S. Portal;
+- Backup & restore;
+- View logs;
+- Exit.
 
-In practice, ordinary operations should favor:
+See [Windows Packaged Release](windows-release.md).
 
-- **Dashboard** for summary/navigation;
-- **BAM** for asset workflows;
-- **SHIT** for service workflows;
-- **Timeclock** for punch workflows.
+## 10. Getting help / troubleshooting
 
-Reserve Django admin for users who specifically need direct administrative access and understand the implications of modifying records at the model level.
-
-## Common workflows
-
-### Report a problem with an existing asset
-
-1. Open **SHIT**.
-2. Select **Submit ticket**.
-3. Enter the problem summary and description.
-4. Choose the appropriate ticket type and severity.
-5. Select the responsible department.
-6. Search for and link the existing **BAM asset or assets**.
-7. Add an initial attachment if useful.
-8. Submit the ticket.
-9. Use the ticket detail page for follow-up comments/files.
-
-The BAM record remains authoritative for asset identity and custody; the SHIT ticket contains the operational work surrounding the issue.
-
-### Work a department queue
-
-1. Open **SHIT**.
-2. Choose **Department queue**.
-3. Switch to **Board** for active operational work.
-4. Review severity and assignment separately from queue position.
-5. Move a ticket horizontally when its actual workflow status changes.
-6. Reorder vertically when priorities within the same status need to change.
-7. Open the ticket for comments, attachments, BAM context, management controls, and event history.
-
-### Look up equipment before taking action
-
-1. Open **BAM**.
-2. Search by asset ID, serial number, manufacturer, model, or notes.
-3. Open the asset record.
-4. Review current status, department, custodian, evidence, custody history, and asset history.
-5. If operational work is required, create/link a SHIT ticket rather than placing helpdesk workflow inside the BAM notes field.
-
-### Correct a time punch
-
-1. Open **Timeclock**.
-2. Locate the punch in Recent punches.
-3. Staff users select **Correct**.
-4. Verify the original record shown on the correction page.
-5. Enter the corrected type/time and a reason.
-6. Record the correction.
-7. Confirm the punch now shows its corrected effective state and retained audit detail.
-
-## For developers and administrators
-
-This guide intentionally does not duplicate local setup, migration, deployment, or architecture instructions.
-
-See the repository [`README.md`](../README.md), [`development/`](development/), [`architecture/`](architecture/), and [`adr/`](adr/) documentation for those topics.
-
-## BAM automation, stock custody, and self-service release
-
-Company-owned assets with no explicit custodian default to the BAM stock custodian. Chunk 5 bootstraps that role from the active `vanguard` account when present; administrators can change the default under **Administration → BAM automation**. Existing assets that already have a custodian are not overwritten by the migration.
-
-Normal BAM request submission is policy-driven. When automatic approval is enabled, BAM immediately attempts to satisfy each requested resource. An eligible asset is reserved automatically; when the requested window is active today and automatic transfer is enabled, BAM also creates the checkout and changes custody to the requester. If no eligible asset is available, the requirement enters the BAM waitlist rather than creating a SHIT ticket. Future reservations remain reservations until their window is active; `process_bam_automation` performs scheduled/catch-up transfers and the Windows launcher runs one pulse at startup.
-
-From **BAM → Active Checkouts → My checkouts**, the current custodian can release an asset without administrative access. A good-condition release returns the asset to stock and may automatically promote and issue the next active queued request. Reporting damage, a missing accessory, a minor issue, or another attention condition places the asset on an allocation hold and prevents automatic reassignment until the hold is cleared.
-
-Managers retain manual controls. They may choose a specific alternate asset, allocate an asset that has automatic allocation disabled, release reservations, perform direct handoffs, or clear/set an allocation hold. A hard allocation hold remains authoritative even when automation is otherwise enabled.
-
-BAM automation can be disabled independently for request approval and custody transfer. Automatic actions use the configured automation actor (Vanguard by default when available) and write the same BAM request/asset history used by manual operations, with automation metadata recorded on generated events.
+Use [Troubleshooting](troubleshooting.md) for pending migrations, missing tables, stuck BAM queues, MySQL client discovery, backup restore failures, packaged-service problems, and test-database setup.
