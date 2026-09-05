@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Asset Requests — BAM{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/bam.css' %}">{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+    <p class="eyebrow">BAM · RESOURCE ALLOCATION</p>
+    <div class="hero-row">
+        <div>
+            <h1>Asset Requests</h1>
+            <p>Request, queue, and reserve BAM assets without creating SHIT board noise.</p>
+        </div>
+        <div class="bam-actions">
+            <a class="bam-secondary-button" href="{% url 'bam:checkout_list' %}">Active checkouts</a>
+            <a class="bam-secondary-button" href="{% url 'bam:list' %}">Asset register</a>
+            <a class="button" href="{% url 'bam:request_create' %}">New asset request</a>
+        </div>
+    </div>
+</section>
+
+<nav class="bam-request-tabs" aria-label="Asset request scope">
+    <a class="{% if scope == 'my' %}active{% endif %}" href="{% url 'bam:request_list' %}?scope=my">My requests</a>
+    {% if can_manage_any %}<a class="{% if scope == 'queue' %}active{% endif %}" href="{% url 'bam:request_list' %}?scope=queue">Managed queue</a>{% endif %}
+</nav>
+
+<section class="card table-card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Request</th><th>Purpose</th><th>Requester</th><th>Window</th><th>Priority</th><th>Status</th><th>Requirements</th></tr>
+            </thead>
+            <tbody>
+            {% for row in asset_requests %}
+                <tr>
+                    <td class="mono"><a href="{% url 'bam:request_detail' row.request_number %}">{{ row.request_number }}</a></td>
+                    <td>{{ row.purpose }}</td>
+                    <td>{{ row.requester }}</td>
+                    <td>{{ row.requested_start }} → {{ row.requested_end }}</td>
+                    <td>{{ row.get_priority_display }}</td>
+                    <td><span class="request-status {{ row.status|lower|cut:'_' }}">{{ row.get_status_display }}</span></td>
+                    <td>
+                        {% for item in row.items.all %}
+                            <div><span class="mono">{{ item.department.code }}/{{ item.asset_type.code }}</span> · {{ item.get_status_display }}</div>
+                        {% empty %}—{% endfor %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="muted">No asset requests in this view.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
